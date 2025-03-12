@@ -93,6 +93,44 @@ A modern solution for seamless visitor tracking and staff management built with 
   - Visitor management screens
   - Settings and configuration pages
 
+
+## Detailed Instructions
+
+### First-Time Setup
+
+1. After installation, access the admin panel at `/admin_login`
+2. Default credentials:
+   - Username: ``
+   - Password: ``
+3. Change the default password immediately
+4. Configure system settings before adding users
+
+### Adding Staff Users
+
+1. In the admin panel, navigate to "User Management"
+2. Click "Add New User"
+3. Fill in required details and assign appropriate permissions
+4. New staff can log in at `/staff_login` with their credentials
+
+### Visitor Registration Process
+
+1. Staff logs into portal
+2. Select "Register Visitor" from the dashboard
+3. Enter visitor details including:
+   - Name
+   - Contact information
+   - Purpose of visit
+   - ID verification (optional photo capture)
+4. Submit the form to register visitor
+5. System generates a visitor badge that can be printed
+
+### Reports and Exports
+
+1. Access "Reports" section in admin panel
+2. Select date range and filter options
+3. Generate report and export in desired format (PDF/Excel)
+4. Automated reports can be scheduled in Settings
+
 ## Version
 
 Current version: 2.6.3
