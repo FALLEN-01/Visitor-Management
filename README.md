@@ -38,7 +38,7 @@ A modern solution for seamless visitor tracking and staff management built with 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/FALLEN-01/Visitor_Management.git
+   git clone https://github.com/FALLEN-01/Visitor-Management.git
    cd Visitor-Management
    ```
 
