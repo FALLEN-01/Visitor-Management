@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Visitor Logs Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            color: #333;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .report-header h1 {
+            color: #395886;
+            margin-bottom: 10px;
+        }
+        .report-header p {
+            color: #777;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #395886;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .report-footer {
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <h1>Visitor Logs Report</h1>
+        <p>Period: {{ date_from }} to {{ date_to }}</p>
+        <p>Generated on: {{ generated_date }}</p>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Log ID</th>
+                <th>Visitor</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.log_id }}</td>
+                <td>{{ log.visitor_name }}</td>
+                <td>{{ log.check_in }}</td>
+                <td>{{ log.check_out|default('-') }}</td>
+            </tr>
+            {% endfor %}
+            {% if not logs %}
+            <tr>
+                <td colspan="4" style="text-align: center;">No logs found for the selected period.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+    
+    <div class="report-footer">
+        <p>Visitor Management System</p>
+    </div>
+</body>
+</html>

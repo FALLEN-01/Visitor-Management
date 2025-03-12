@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Staff Login Page Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/staff-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/staff-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/staff-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/staff-144x144.png') }}">
+    <!-- Existing styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_login.css') }}">
+    <title>Staff Login - VMS</title>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="container glass">
+        <form action="{{ url_for('staff_login') }}" method="POST" class="login-form">
+            <div class="header-icon glass">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <h1>Staff Login</h1>
+            <p>Enter your credentials to access the staff portal</p>
+            
+            <div class="input-group glass">
+                <i class="fas fa-envelope"></i>
+                <input type="email" name="email" placeholder="Email Address" required>
+            </div>
+            
+            <div class="input-group glass">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password" placeholder="Password" required>
+            </div>
+
+            <button type="submit" class="glass-btn">
+                Login <i class="fas fa-sign-in-alt"></i>
+            </button>
+            
+            {% if error %}
+            <div class="error-message glass">
+                {{ error }}
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</body>
+</html>

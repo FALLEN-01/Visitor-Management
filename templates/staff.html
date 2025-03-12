@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <title>Staff Management - VMS</title>
+    <!-- Staff Page Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/staff-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/staff-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/staff-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/staff-144x144.png') }}">
+</head>
+<body>
+    <div class="background"></div>
+    <nav class="admin-nav">
+        <div class="nav-brand">
+            <i class="fas fa-shield-alt"></i>
+            <span>VMS Admin Panel</span>
+        </div>
+        <div class="nav-status">
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <form action="{{ url_for('toggle_theme') }}" method="POST" id="themeForm">
+                    <label class="switch">
+                        <input type="checkbox" {% if theme == 'dark' %}checked{% endif %} 
+                               onchange="this.form.submit()">
+                        <span class="slider round"></span>
+                    </label>
+                </form>
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="connection-status">
+                <i class="fas fa-wifi {% if status == 'Connected' %}connected{% else %}disconnected{% endif %}"></i>
+            </div>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Users menu item -->
+                <div class="menu-item has-submenu {% if active_submenu == 'users' %}active{% endif %}">
+                    <form action="{{ url_for('toggle_submenu') }}" method="POST" class="submenu-form">
+                        <input type="hidden" name="submenu" value="users">
+                        <button type="submit" class="menu-header">
+                            <div class="header-left">
+                                <i class="fas fa-users"></i>
+                                <span>Users</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </form>
+                    <div class="submenu {% if active_submenu == 'users' %}active{% endif %}">
+                        <div class="menu-item {% if active_page == 'staffs' %}active{% endif %}">
+                            <a href="{{ url_for('manage_staff') }}">
+                                <i class="fas fa-user-tie"></i> Staffs
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_visitors') }}">
+                                <i class="fas fa-user"></i> Visitors
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-item {% if active_page == 'logbook' %}active{% endif %}">
+                    <a href="{{ url_for('view_logs') }}">
+                        <i class="fas fa-book"></i> Log Book
+                    </a>
+                </div>
+
+                <div class="menu-item {% if active_page == 'settings' %}active{% endif %}">
+                    <a href="{{ url_for('settings') }}">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Staff Management</h1>
+                </div>
+            </div>
+
+            <!-- Search & Filter Section - UPDATED -->
+            <div class="search-container">
+                <div class="search-bar-wrapper">
+                    <div class="search-bar">
+                        <form action="{{ url_for('manage_staff') }}" method="GET" class="search-form" id="search-form">
+                            <input type="text" name="search" id="search-input" placeholder="Search by name or email..." 
+                                   value="{{ request.args.get('search', '') }}" autocomplete="off">
+                            <button type="submit" id="search-btn"><i class="fas fa-search"></i></button>
+                        </form>
+                    </div>
+                    <button type="button" id="add-staff" class="btn-primary">
+                        <i class="fas fa-plus"></i> Add Staff
+                    </button>
+                </div>
+            </div>
+
+            <!-- Staff Table Section -->
+            <div class="logs-table">
+                <div class="logs-header">
+                    <h2>Staff List</h2>
+                    <div class="logs-stats">Showing <span id="showing-count">{{ staff|length }}</span> entries</div>
+                </div>
+                <table id="staff-data">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Address</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if staff %}
+                            {% for member in staff %}
+                            <tr>
+                                <td>{{ member.staff_id }}</td>
+                                <td>{{ member.name }}</td>
+                                <td>{{ member.email }}</td>
+                                <td>{{ member.address }}</td>
+                                <td>{{ member.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="actions">
+                                    <button class="btn-icon edit-btn" data-id="{{ member.staff_id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon delete-btn" data-id="{{ member.staff_id }}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="no-results">
+                                <td colspan="6" class="no-data">No staff found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Staff Modal -->
+    <div id="staff-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Staff</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="staff-form" action="{{ url_for('manage_staff') }}" method="POST">
+                    <input type="hidden" id="staff-id" name="staff_id">
+                    
+                    <div class="form-group">
+                        <label for="staff-name">Name</label>
+                        <input type="text" id="staff-name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="staff-email">Email</label>
+                        <input type="email" id="staff-email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="staff-address">Address</label>
+                        <textarea id="staff-address" name="address" rows="3" required></textarea>
+                    </div>
+                    
+                    <!-- Add mode password field - only shown when adding new staff -->
+                    <div class="form-group" id="add-password-group">
+                        <label for="staff-password">Password</label>
+                        <div class="input-group">
+                            <input type="password" id="staff-password" name="password" required>
+                            <button type="button" class="toggle-password" tabindex="-1">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Edit mode password field - only shown when editing staff -->
+                    <div class="form-group" id="edit-password-group" style="display: none;">
+                        <label for="edit-staff-password">Password</label>
+                        <div class="input-group">
+                            <input type="password" id="edit-staff-password" name="password" placeholder="••••••••">
+                            <button type="button" class="toggle-password" tabindex="-1">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-options">
+                            <small class="help-text">Leave blank to keep current password</small>
+                            <div class="password-status">
+                                <i class="fas fa-lock"></i> Password is set
+                            </div>
+                            <button type="button" id="view-current-password" class="btn-link">
+                                <i class="fas fa-key"></i> View Current Password
+                            </button>
+                            <div id="current-password" style="display: none;">
+                                <span id="password-value"></span>
+                                <button type="button" id="copy-password" title="Copy password">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary" id="cancel-staff">Cancel</button>
+                        <button type="submit" class="btn-primary" id="save-staff">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this staff member? This action cannot be undone.</p>
+                
+                <div class="form-buttons">
+                    <button type="button" class="btn-secondary" id="cancel-delete">Cancel</button>
+                    <button type="button" class="btn-danger" id="confirm-delete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Remove all toggle filter panel code
+
+        // Get references to the search input and staff table rows
+        const searchInput = document.getElementById('search-input');
+        const tableRows = document.querySelectorAll('#staff-data tbody tr:not(#no-results)');
+        const showingCountElement = document.getElementById('showing-count');
+        
+        // Define the search function
+        function performSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let hasResults = false;
+            let visibleCount = 0;
+            
+            // Loop through all rows in the staff table
+            tableRows.forEach(row => {
+                const textContent = row.textContent.toLowerCase();
+                
+                // Show row if it contains the search term, hide it otherwise
+                if (textContent.includes(searchTerm)) {
+                    row.style.display = '';
+                    hasResults = true;
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Check if we need to display a "no results" message
+            let noResultsRow = document.getElementById('no-results-row');
+            
+            if (!hasResults) {
+                // If no results and no message exists yet, create one
+                if (!noResultsRow) {
+                    const tbody = document.querySelector('#staff-data tbody');
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'no-results-row';
+                    noResultsRow.innerHTML = `<td colspan="6" style="text-align: center; padding: 20px;">No matching results found</td>`;
+                    tbody.appendChild(noResultsRow);
+                } else {
+                    noResultsRow.style.display = '';
+                }
+            } else if (noResultsRow) {
+                // Hide the no results message if we have results
+                noResultsRow.style.display = 'none';
+            }
+            
+            // Update the count of visible entries
+            if (showingCountElement) {
+                showingCountElement.textContent = visibleCount;
+            }
+        }
+        
+        // Add event listener for input changes (live search as user types)
+        if (searchInput) {
+            searchInput.addEventListener('input', performSearch);
+        }
+        
+        // Prevent form submission (which would reload the page)
+        const searchForm = document.querySelector('.search-form');
+        if (searchForm) {
+            searchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                performSearch();
+            });
+        }
+        
+        // Staff Modal Functions
+        const staffModal = document.getElementById('staff-modal');
+        const addStaffBtn = document.getElementById('add-staff');
+        const cancelStaffBtn = document.getElementById('cancel-staff');
+        const closeModalBtn = document.querySelector('#staff-modal .close-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const staffForm = document.getElementById('staff-form');
+        const staffIdInput = document.getElementById('staff-id');
+        const staffNameInput = document.getElementById('staff-name');
+        const staffEmailInput = document.getElementById('staff-email');
+        const staffDeptInput = document.getElementById('staff-department');
+        const staffAddressInput = document.getElementById('staff-address');
+        
+        // Add staff button click
+        if (addStaffBtn) {
+            addStaffBtn.addEventListener('click', function() {
+                modalTitle.textContent = 'Add Staff';
+                staffIdInput.value = '';
+                staffForm.reset();
+                staffForm.action = "{{ url_for('manage_staff') }}";
+                
+                // Switch to add mode password field
+                document.getElementById('add-password-group').style.display = 'block';
+                document.getElementById('edit-password-group').style.display = 'none';
+                
+                staffModal.style.display = 'block';
+            });
+        }
+        
+        // Cancel and close button clicks
+        if (cancelStaffBtn) {
+            cancelStaffBtn.addEventListener('click', function() {
+                staffModal.style.display = 'none';
+            });
+        }
+        
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', function() {
+                staffModal.style.display = 'none';
+            });
+        }
+        
+        // Edit buttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const staffId = this.getAttribute('data-id');
+                const row = this.closest('tr');
+                
+                modalTitle.textContent = 'Edit Staff';
+                staffIdInput.value = staffId;
+                staffNameInput.value = row.cells[1].textContent;
+                staffEmailInput.value = row.cells[2].textContent;
+                staffAddressInput.value = row.cells[3].textContent;
+                
+                // Fix #1: Correctly set the form action with absolute URL
+                staffForm.action = "{{ url_for('manage_staff') }}" + `/${staffId}/edit`;
+                
+                // Fix #2: Ensure password fields are properly toggled
+                document.getElementById('add-password-group').style.display = 'none';
+                document.getElementById('edit-password-group').style.display = 'block';
+                
+                // Fix #3: Disable the add-mode password field to prevent it from submitting
+                document.getElementById('staff-password').disabled = true;
+                document.getElementById('edit-staff-password').disabled = false;
+                
+                staffModal.style.display = 'block';
+            });
+        });
+        
+        // Add staff button - switch to add mode
+        if (addStaffBtn) {
+            addStaffBtn.addEventListener('click', function() {
+                modalTitle.textContent = 'Add Staff';
+                staffIdInput.value = '';
+                staffForm.reset();
+                
+                // Fix #4: Reset form action properly
+                staffForm.action = "{{ url_for('manage_staff') }}";
+                
+                // Fix #5: Properly toggle password fields for add mode
+                document.getElementById('add-password-group').style.display = 'block';
+                document.getElementById('edit-password-group').style.display = 'none';
+                
+                // Fix #6: Enable/disable appropriate password fields
+                document.getElementById('staff-password').disabled = false;
+                document.getElementById('edit-staff-password').disabled = true;
+                
+                staffModal.style.display = 'block';
+            });
+        }
+        
+        // Delete buttons
+        const confirmModal = document.getElementById('confirm-modal');
+        const cancelDeleteBtn = document.getElementById('cancel-delete');
+        const confirmDeleteBtn = document.getElementById('confirm-delete');
+        let staffIdToDelete = null;
+        
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                staffIdToDelete = this.getAttribute('data-id');
+                confirmModal.style.display = 'block';
+            });
+        });
+        
+        if (cancelDeleteBtn) {
+            cancelDeleteBtn.addEventListener('click', function() {
+                confirmModal.style.display = 'none';
+            });
+        }
+        
+        document.querySelector('#confirm-modal .close-modal').addEventListener('click', function() {
+            confirmModal.style.display = 'none';
+        });
+        
+        // Handle delete confirmation
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (staffIdToDelete) {
+                    // Create and submit form for delete
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/admin/users/staff/${staffIdToDelete}/delete`;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+        
+        // Close modal if user clicks outside of it
+        window.addEventListener('click', function(event) {
+            if (event.target === staffModal) {
+                staffModal.style.display = 'none';
+            }
+            if (event.target === confirmModal) {
+                confirmModal.style.display = 'none';
+            }
+        });
+
+        // Add password viewing functionality
+        const viewPasswordBtn = document.getElementById('view-current-password');
+        const currentPasswordSpan = document.getElementById('current-password');
+
+        if (viewPasswordBtn) {
+            viewPasswordBtn.addEventListener('click', function() {
+                const staffId = document.getElementById('staff-id').value;
+                
+                if (!staffId) {
+                    alert('Error: Staff ID not found');
+                    return;
+                }
+                
+                // Show loading state
+                viewPasswordBtn.disabled = true;
+                viewPasswordBtn.textContent = 'Loading...';
+                
+                // Make AJAX request to get password
+                fetch(`/admin/users/staff/${staffId}/get-password`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to retrieve password');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.password) {
+                            currentPasswordSpan.textContent = data.password;
+                            currentPasswordSpan.style.display = 'block';
+                            // Auto-hide after 15 seconds for security
+                            setTimeout(() => {
+                                currentPasswordSpan.style.display = 'none';
+                                currentPasswordSpan.textContent = '';
+                            }, 6000);
+                        } else {
+                            currentPasswordSpan.textContent = 'No password set';
+                            currentPasswordSpan.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error retrieving password. Please try again.');
+                    })
+                    .finally(() => {
+                        // Restore button state
+                        viewPasswordBtn.disabled = false;
+                        viewPasswordBtn.textContent = 'View Current Password';
+                    });
+            });
+        }
+    });
+    </script>
+    <script>
+    // Password visibility toggle functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleButtons = document.querySelectorAll('.toggle-password');
+        
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                const icon = this.querySelector('i');
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
+    });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Existing code...
+        
+        // Enhanced password viewing functionality
+        const viewPasswordBtn = document.getElementById('view-current-password');
+        const currentPasswordDiv = document.getElementById('current-password');
+        const passwordValue = document.getElementById('password-value');
+        const copyPasswordBtn = document.getElementById('copy-password');
+        
+        if (viewPasswordBtn) {
+            viewPasswordBtn.addEventListener('click', function() {
+                const staffId = document.getElementById('staff-id').value;
+                
+                if (!staffId) {
+                    alert('Error: Staff ID not found');
+                    return;
+                }
+                
+                // Show loading state
+                viewPasswordBtn.disabled = true;
+                viewPasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                
+                // Make AJAX request to get password
+                fetch(`/admin/users/staff/${staffId}/get-password`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to retrieve password');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.password) {
+                            passwordValue.textContent = data.password;
+                            currentPasswordDiv.style.display = 'flex';
+                            
+                            // Auto-hide after 30 seconds for security
+                            setTimeout(() => {
+                                currentPasswordDiv.style.display = 'none';
+                                passwordValue.textContent = '';
+                            }, 30000);
+                        } else {
+                            passwordValue.textContent = 'No password set';
+                            currentPasswordDiv.style.display = 'flex';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error retrieving password. Please try again.');
+                    })
+                    .finally(() => {
+                        // Restore button state
+                        viewPasswordBtn.disabled = false;
+                        viewPasswordBtn.innerHTML = '<i class="fas fa-key"></i> View Current Password';
+                    });
+            });
+            
+            // Add copy to clipboard functionality
+            if (copyPasswordBtn) {
+                copyPasswordBtn.addEventListener('click', function() {
+                    const password = passwordValue.textContent;
+                    if (password) {
+                        navigator.clipboard.writeText(password).then(function() {
+                            // Show copy success feedback
+                            const originalHTML = copyPasswordBtn.innerHTML;
+                            copyPasswordBtn.innerHTML = '<i class="fas fa-check"></i>';
+                            copyPasswordBtn.style.color = '#2ecc71';
+                            
+                            setTimeout(() => {
+                                copyPasswordBtn.innerHTML = originalHTML;
+                                copyPasswordBtn.style.color = '';
+                            }, 2000);
+                        });
+                    }
+                });
+            }
+        }
+    });
+    </script>
+</body>
+</html>

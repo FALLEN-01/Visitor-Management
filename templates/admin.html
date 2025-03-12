@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <!-- Core meta configuration -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- FontAwesome for UI icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Main stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    
+    <title>Admin Dashboard - VMS</title>
+    
+    <!-- Favicons for various platforms -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/dashboard-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/dashboard-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/dashboard-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/dashboard-144x144.png') }}">
+</head>
+<body>
+    <!-- Decorative background element for visual design -->
+    <div class="background"></div>
+    
+    <!-- Top navigation bar with branding and controls -->
+    <nav class="admin-nav">
+        <!-- System branding -->
+        <div class="nav-brand">
+            <i class="fas fa-shield-alt"></i>
+            <span>VMS Admin Panel</span>
+        </div>
+        
+        <!-- User controls and system status -->
+        <div class="nav-status">
+            <!-- Theme switcher (light/dark mode) -->
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <form action="{{ url_for('toggle_theme') }}" method="POST" id="themeForm">
+                    <label class="switch">
+                        <input type="checkbox" {% if theme == 'dark' %}checked{% endif %} 
+                               onchange="this.form.submit()">
+                        <span class="slider round"></span>
+                    </label>
+                </form>
+                <i class="fas fa-moon"></i>
+            </div>
+            
+            <!-- Database connection status indicator -->
+            <div class="connection-status">
+                <i class="fas fa-wifi {% if status == 'Connected' %}connected{% else %}disconnected{% endif %}"></i>
+            </div>
+            
+            <!-- Authentication control -->
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main application layout -->
+    <div class="dashboard">
+        <!-- Navigation sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-menu">
+                <!-- Main dashboard view -->
+                <div class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- User management section with collapsible submenu -->
+                <div class="menu-item has-submenu {% if active_submenu == 'users' %}active{% endif %}">
+                    <form action="{{ url_for('toggle_submenu') }}" method="POST" class="submenu-form">
+                        <input type="hidden" name="submenu" value="users">
+                        <button type="submit" class="menu-header">
+                            <div class="header-left">
+                                <i class="fas fa-users"></i>
+                                <span>Users</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </form>
+                    
+                    <!-- Submenu for user type management -->
+                    <div class="submenu {% if active_submenu == 'users' %}active{% endif %}">
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_staff') }}">
+                                <i class="fas fa-user-tie"></i> Staffs
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_visitors') }}">
+                                <i class="fas fa-user"></i> Visitors
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Log Book menu item -->
+                <div class="menu-item {% if active_page == 'logbook' %}active{% endif %}">
+                    <a href="{{ url_for('view_logs') }}">
+                        <i class="fas fa-book"></i> Log Book
+                    </a>
+                </div>
+
+                <!-- Settings menu item -->
+                <div class="menu-item {% if active_page == 'settings' %}active{% endif %}">
+                    <a href="{{ url_for('settings') }}">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="main-content">
+            <!-- Header for the main content section -->
+            <div class="header">
+                <div class="header-content">
+                    <h1>Dashboard Overview</h1>
+                </div>
+            </div>
+
+            <!-- Statistics cards grid -->
+            <div class="stats-grid">
+                <!-- Total Users statistic card -->
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <div class="number">{{ stats.total_users|default(0) }}</div>
+                </div>
+                
+                <!-- Active Sessions statistic card -->
+                <div class="stat-card">
+                    <h3>Active Sessions</h3>
+                    <div class="number">{{ stats.active_sessions|default(0) }}</div>
+                </div>
+                
+                <!-- Total Visitors statistic card -->
+                <div class="stat-card">
+                    <h3>Total Visitors</h3>
+                    <div class="number">{{ stats.total_visitors|default(0) }}</div>
+                </div>
+            </div>
+
+            <!-- Recent activity logs section -->
+            <div class="mini-logs">
+                <!-- Header with title and "View All" link -->
+                <div class="mini-logs-header">
+                    <h3>Recent Activity</h3>
+                    <a href="{{ url_for('view_logs') }}" class="view-all">View All</a>
+                </div>
+                
+                <!-- Table containing recent activity logs -->
+                <div class="mini-logs-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Visitor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Conditional rendering of log entries -->
+                            {% if logs %}
+                                {% for log in logs %}
+                                <tr>
+                                    <td>{{ log.check_in.strftime('%H:%M') if log.check_in else '-' }}</td>
+                                    <td>{{ log.visitor_name or 'Unknown' }}</td>
+                                    <td>
+                                        <span class="status-badge {% if not log.check_out %}active{% endif %}">
+                                            {{ 'Active' if not log.check_out else 'Checked Out' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Displayed when no logs are available -->
+                                <tr>
+                                    <td colspan="3" class="no-data">No recent activity</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

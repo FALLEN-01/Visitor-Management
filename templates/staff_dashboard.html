@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <title>Staff Dashboard - VMS</title>
+    <!-- Staff Dashboard Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/staff-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/staff-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/staff-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/staff-144x144.png') }}">
+</head>
+<body>
+    <div class="background"></div>
+    <nav class="admin-nav">
+        <div class="nav-brand">
+            <i class="fas fa-shield-alt"></i>
+            <span>VMS Staff Portal</span>
+        </div>
+        <div class="nav-status">
+            <div class="staff-info">
+                <i class="fas fa-user-tie"></i>
+                <span>Welcome, {{ staff_name }}</span>
+            </div>
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <form action="{{ url_for('toggle_theme') }}" method="POST" id="themeForm">
+                    <label class="switch">
+                        <input type="checkbox" {% if theme == 'dark' %}checked{% endif %} 
+                               onchange="this.form.submit()">
+                        <span class="slider round"></span>
+                    </label>
+                </form>
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="connection-status">
+                <i class="fas fa-wifi {% if status == 'Connected' %}connected{% else %}disconnected{% endif %}"></i>
+            </div>
+            <a href="{{ url_for('staff_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="dashboard staff-dashboard">
+        <div class="main-content">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Visitor Management</h1>
+                </div>
+            </div>
+
+            <!-- Visitor Search Section -->
+            <div class="search-container">
+                <div class="search-bar-wrapper">
+                    <div class="search-bar">
+                        <form id="visitor-search-form" class="search-form">
+                            <input type="text" id="visitor-search" placeholder="Search for visitors by name..." autocomplete="off">
+                            <button type="submit" id="search-btn"><i class="fas fa-search"></i></button>
+                        </form>
+                    </div>
+                    <button type="button" id="add-visitor" class="btn-primary">
+                        <i class="fas fa-plus"></i> New Visitor
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Results Section -->
+            <div id="search-results" class="logs-table" style="display: none;">
+                <div class="logs-header">
+                    <h2>Search Results</h2>
+                    <div class="logs-stats">Found <span id="results-count">0</span> visitors</div>
+                </div>
+                <table id="visitor-results">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>ID Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Search results will be dynamically populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Active Sessions Section -->
+            <div class="logs-table">
+                <div class="logs-header">
+                    <h2>Active Visitor Sessions</h2>
+                    <div class="logs-stats">Showing <span id="active-count">{{ active_sessions|length }}</span> active visitors</div>
+                </div>
+                <table id="active-sessions">
+                    <thead>
+                        <tr>
+                            <th>Log ID</th>
+                            <th>Visitor</th>
+                            <th>Check In Time</th>
+                            <th>Duration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if active_sessions %}
+                            {% for session in active_sessions %}
+                            <tr>
+                                <td>{{ session.log_id }}</td>
+                                <td>{{ session.visitor_name }}</td>
+                                <td>{{ session.check_in.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="duration" data-checkin="{{ session.check_in.strftime('%Y-%m-%d %H:%M:%S') }}">
+                                        {{ session.duration }}
+                                    </span>
+                                </td>
+                                <td class="actions">
+                                    <button class="btn-primary checkout-btn" data-log-id="{{ session.log_id }}">
+                                        Check Out
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="no-active">
+                                <td colspan="5" class="no-data">No active visitor sessions</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Visitor Modal -->
+    <div id="visitor-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add New Visitor</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="visitor-form" action="{{ url_for('staff_add_visitor') }}" method="POST">
+                    <input type="hidden" id="visitor-id" name="visitor_id">
+                    
+                    <div class="form-group">
+                        <label for="visitor-name">Name</label>
+                        <input type="text" id="visitor-name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-age">Age</label>
+                        <input type="number" id="visitor-age" name="age" min="1" max="120" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-sex">Gender</label>
+                        <select id="visitor-sex" name="sex" required>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-email">Email</label>
+                        <input type="email" id="visitor-email" name="email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-address">Address</label>
+                        <textarea id="visitor-address" name="address" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-id-type">ID Proof Type</label>
+                        <input type="text" id="visitor-id-type" name="id_proof_type" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-proof-number">ID Number</label>
+                        <input type="text" id="visitor-proof-number" name="proof_number" required>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary" id="cancel-visitor">Cancel</button>
+                        <button type="submit" class="btn-primary" id="save-visitor">Save & Check In</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-in Confirmation Modal -->
+    <div id="checkin-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Check In</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to check in this visitor?</p>
+                <div class="visitor-details">
+                    <p><strong>Name:</strong> <span id="checkin-name"></span></p>
+                    <p><strong>ID Type:</strong> <span id="checkin-id-type"></span></p>
+                    <p><strong>ID Number:</strong> <span id="checkin-id-number"></span></p>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="button" class="btn-secondary" id="cancel-checkin">Cancel</button>
+                    <button type="button" class="btn-primary" id="confirm-checkin">Check In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Confirmation Modal -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Check Out</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to check out this visitor?</p>
+                <div class="visitor-details">
+                    <p><strong>Name:</strong> <span id="checkout-name"></span></p>
+                    <p><strong>Check-in Time:</strong> <span id="checkout-time"></span></p>
+                    <p><strong>Duration:</strong> <span id="checkout-duration"></span></p>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="button" class="btn-secondary" id="cancel-checkout">Cancel</button>
+                    <button type="button" class="btn-primary" id="confirm-checkout">Check Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for functionality -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const searchForm = document.getElementById('visitor-search-form');
+        const searchInput = document.getElementById('visitor-search');
+        const searchResults = document.getElementById('search-results');
+        const resultsTable = document.getElementById('visitor-results').querySelector('tbody');
+        const resultsCount = document.getElementById('results-count');
+        
+        const visitorModal = document.getElementById('visitor-modal');
+        const addVisitorBtn = document.getElementById('add-visitor');
+        const cancelVisitorBtn = document.getElementById('cancel-visitor');
+        const closeModalBtn = document.querySelector('#visitor-modal .close-modal');
+        const visitorForm = document.getElementById('visitor-form');
+        
+        const checkinModal = document.getElementById('checkin-modal');
+        const checkinName = document.getElementById('checkin-name');
+        const checkinIdType = document.getElementById('checkin-id-type');
+        const checkinIdNumber = document.getElementById('checkin-id-number');
+        const confirmCheckinBtn = document.getElementById('confirm-checkin');
+        const cancelCheckinBtn = document.getElementById('cancel-checkin');
+        const closeCheckinBtn = document.querySelector('#checkin-modal .close-modal');
+        
+        const checkoutModal = document.getElementById('checkout-modal');
+        const checkoutName = document.getElementById('checkout-name');
+        const checkoutTime = document.getElementById('checkout-time');
+        const checkoutDuration = document.getElementById('checkout-duration');
+        const confirmCheckoutBtn = document.getElementById('confirm-checkout');
+        const cancelCheckoutBtn = document.getElementById('cancel-checkout');
+        const closeCheckoutBtn = document.querySelector('#checkout-modal .close-modal');
+        
+        let visitorToCheckin = null;
+        let visitorToCheckout = null;
+        
+        // Debounce function to prevent excessive API calls
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+        
+        // Function to search for visitors
+        function searchVisitors(searchTerm) {
+            if (searchTerm.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            // Show loading indicator
+            resultsTable.innerHTML = '<tr><td colspan="6" class="loading"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>';
+            searchResults.style.display = 'block';
+            
+            // Fetch visitors matching the search term
+            fetch(`/staff/search-visitors?q=${encodeURIComponent(searchTerm)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.visitors && data.visitors.length > 0) {
+                        // Populate the results table
+                        resultsTable.innerHTML = '';
+                        data.visitors.forEach(visitor => {
+                            const row = document.createElement('tr');
+                            
+                            // Create button based on check-in status
+                            let actionButton;
+                            if (visitor.is_checked_in) {
+                                actionButton = `
+                                    <button class="btn-primary checkout-btn" 
+                                            data-log-id="${visitor.active_log_id}" 
+                                            data-name="${visitor.name}"
+                                            data-checkin="${visitor.check_in_time}"
+                                            data-duration="${visitor.duration}">
+                                        Check Out
+                                    </button>
+                                `;
+                            } else {
+                                actionButton = `
+                                    <button class="btn-primary checkin-btn" 
+                                            data-id="${visitor.visitor_id}" 
+                                            data-name="${visitor.name}"
+                                            data-id-type="${visitor.id_proof_type}"
+                                            data-id-number="${visitor.proof_number}">
+                                        Check In
+                                    </button>
+                                `;
+                            }
+                            
+                            row.innerHTML = `
+                                <td>${visitor.visitor_id}</td>
+                                <td>${visitor.name}</td>
+                                <td>${visitor.age}</td>
+                                <td>${visitor.sex}</td>
+                                <td>${visitor.id_proof_type}</td>
+                                <td class="actions">
+                                    ${actionButton}
+                                </td>
+                            `;
+                            resultsTable.appendChild(row);
+                        });
+                        
+                        // Add event listeners to check-in buttons
+                        document.querySelectorAll('.checkin-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const visitorId = this.getAttribute('data-id');
+                                const visitorName = this.getAttribute('data-name');
+                                const idType = this.getAttribute('data-id-type');
+                                const idNumber = this.getAttribute('data-id-number');
+                                
+                                // Show confirmation modal
+                                visitorToCheckin = visitorId;
+                                checkinName.textContent = visitorName;
+                                checkinIdType.textContent = idType;
+                                checkinIdNumber.textContent = idNumber;
+                                checkinModal.style.display = 'block';
+                            });
+                        });
+                        
+                        // Add event listeners to check-out buttons
+                        document.querySelectorAll('.checkout-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const logId = this.getAttribute('data-log-id');
+                                const visitorName = this.getAttribute('data-name');
+                                const checkinTime = this.getAttribute('data-checkin');
+                                const duration = this.getAttribute('data-duration');
+                                
+                                // Show confirmation modal
+                                visitorToCheckout = logId;
+                                checkoutName.textContent = visitorName;
+                                checkoutTime.textContent = checkinTime;
+                                checkoutDuration.textContent = duration;
+                                checkoutModal.style.display = 'block';
+                            });
+                        });
+                        
+                        resultsCount.textContent = data.visitors.length;
+                    } else {
+                        // No results
+                        resultsTable.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="no-data">
+                                    No visitors found matching "${searchTerm}"
+                                    <button class="btn-link" id="show-add-visitor">Add new visitor</button>
+                                </td>
+                            </tr>
+                        `;
+                        resultsCount.textContent = '0';
+                        
+                        // Add event listener to the "Add new visitor" button
+                        document.getElementById('show-add-visitor').addEventListener('click', function() {
+                            document.getElementById('visitor-name').value = searchTerm;
+                            visitorModal.style.display = 'block';
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching visitors:', error);
+                    resultsTable.innerHTML = '<tr><td colspan="6" class="error">Error searching visitors. Please try again.</td></tr>';
+                });
+        }
+        
+        // Create a debounced search function
+        const debouncedSearch = debounce(searchVisitors, 300);
+        
+        // Event listener for input changes
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            debouncedSearch(searchTerm);
+        });
+        
+        // Also handle form submission (in case someone presses Enter)
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            searchVisitors(searchInput.value.trim());
+        });
+        
+        // Add visitor button
+        addVisitorBtn.addEventListener('click', function() {
+            visitorForm.reset();
+            if (searchInput.value.trim()) {
+                document.getElementById('visitor-name').value = searchInput.value.trim();
+            }
+            visitorModal.style.display = 'block';
+        });
+        
+        // Cancel visitor button
+        cancelVisitorBtn.addEventListener('click', function() {
+            visitorModal.style.display = 'none';
+        });
+        
+        // Close modal buttons
+        closeModalBtn.addEventListener('click', function() {
+            visitorModal.style.display = 'none';
+        });
+        
+        closeCheckinBtn.addEventListener('click', function() {
+            checkinModal.style.display = 'none';
+        });
+        
+        closeCheckoutBtn.addEventListener('click', function() {
+            checkoutModal.style.display = 'none';
+        });
+        
+        // Cancel check-in button
+        cancelCheckinBtn.addEventListener('click', function() {
+            checkinModal.style.display = 'none';
+        });
+        
+        // Cancel check-out button
+        cancelCheckoutBtn.addEventListener('click', function() {
+            checkoutModal.style.display = 'none';
+        });
+        
+        // Confirm check-in button
+        confirmCheckinBtn.addEventListener('click', function() {
+            if (!visitorToCheckin) return;
+            
+            // Disable the button to prevent multiple submissions
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            // Send the check-in request
+            fetch('/staff/checkin-visitor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ visitor_id: visitorToCheckin }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close the modal
+                    checkinModal.style.display = 'none';
+                    
+                    // Refresh the active sessions list
+                    window.location.reload();
+                } else {
+                    alert('Error checking in visitor: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error checking in visitor. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable the button
+                this.disabled = false;
+                this.innerHTML = 'Check In';
+            });
+        });
+        
+        // Add check-out functionality
+        document.querySelectorAll('.checkout-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const logId = this.getAttribute('data-log-id');
+                const visitorName = this.closest('tr').querySelector('td:nth-child(2)').textContent;
+                const checkinTime = this.closest('tr').querySelector('td:nth-child(3)').textContent;
+                const duration = this.closest('tr').querySelector('.duration').textContent;
+                
+                // Show confirmation modal
+                visitorToCheckout = logId;
+                checkoutName.textContent = visitorName;
+                checkoutTime.textContent = checkinTime;
+                checkoutDuration.textContent = duration;
+                checkoutModal.style.display = 'block';
+            });
+        });
+        
+        // Confirm check-out button
+        confirmCheckoutBtn.addEventListener('click', function() {
+            if (!visitorToCheckout) return;
+            
+            // Disable the button to prevent multiple submissions
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            // Send the check-out request
+            fetch('/staff/checkout-visitor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ log_id: visitorToCheckout }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close the modal
+                    checkoutModal.style.display = 'none';
+                    
+                    // Refresh the active sessions list
+                    window.location.reload();
+                } else {
+                    alert('Error checking out visitor: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error checking out visitor. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable the button
+                this.disabled = false;
+                this.innerHTML = 'Check Out';
+            });
+        });
+        
+        // Close modals if user clicks outside of them
+        window.addEventListener('click', function(event) {
+            if (event.target === visitorModal) {
+                visitorModal.style.display = 'none';
+            }
+            if (event.target === checkinModal) {
+                checkinModal.style.display = 'none';
+            }
+            if (event.target === checkoutModal) {
+                checkoutModal.style.display = 'none';
+            }
+        });
+        
+        // Update duration for active sessions
+        function updateDurations() {
+            document.querySelectorAll('.duration').forEach(element => {
+                const checkinTime = new Date(element.getAttribute('data-checkin'));
+                const now = new Date();
+                const diffInMs = now - checkinTime;
+                
+                // Calculate hours, minutes
+                const hours = Math.floor(diffInMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffInMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                element.textContent = `${hours}h ${minutes}m`;
+            });
+        }
+        
+        // Update durations immediately and then every minute
+        updateDurations();
+        setInterval(updateDurations, 60000);
+    });
+    </script>
+
+    <style>
+    /* Additional styles specific to the staff dashboard */
+    .staff-dashboard .main-content {
+        margin-left: 0;
+        padding: 90px 20px 20px;
+    }
+    
+    .staff-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-right: 15px;
+        color: var(--color-text-primary);
+    }
+    
+    [data-theme="dark"] .staff-info {
+        color: var(--dark-text-primary);
+    }
+    
+    .btn-link {
+        background: none;
+        border: none;
+        color: var(--color-medium);
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 5px;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+    
+    .btn-link:hover {
+        color: var(--color-dark);
+    }
+    
+    .loading {
+        padding: 20px;
+        text-align: center;
+        color: var(--color-medium);
+    }
+    
+    .error {
+        padding: 20px;
+        text-align: center;
+        color: #d9534f;
+    }
+    
+    .visitor-details {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    .visitor-details p {
+        margin: 8px 0;
+    }
+    
+    .duration {
+        font-family: monospace;
+    }
+
+    /* Add this to the <style> section in staff_dashboard.html */
+    .search-results-container {
+        position: relative;
+    }
+
+    #search-results {
+        animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Improve the loading indicator */
+    .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 30px;
+        color: var(--color-medium);
+    }
+
+    .loading i {
+        margin-right: 10px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    </style>
+</body>
+</html>

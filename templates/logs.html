@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <title>Log Book - VMS</title>
+    <!-- Logbook Page Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/logbook-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/logbook-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/logbook-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/logbook-144x144.png') }}">
+</head>
+<body>
+    <div class="background"></div>
+    <nav class="admin-nav">
+        <div class="nav-brand">
+            <i class="fas fa-shield-alt"></i>
+            <span>VMS Admin Panel</span>
+        </div>
+        <div class="nav-status">
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <form action="{{ url_for('toggle_theme') }}" method="POST" id="themeForm">
+                    <label class="switch">
+                        <input type="checkbox" {% if theme == 'dark' %}checked{% endif %} 
+                               onchange="this.form.submit()">
+                        <span class="slider round"></span>
+                    </label>
+                </form>
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="connection-status">
+                <i class="fas fa-wifi {% if status == 'Connected' %}connected{% else %}disconnected{% endif %}"></i>
+            </div>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Users menu item -->
+                <div class="menu-item has-submenu {% if active_submenu == 'users' %}active{% endif %}">
+                    <form action="{{ url_for('toggle_submenu') }}" method="POST" class="submenu-form">
+                        <input type="hidden" name="submenu" value="users">
+                        <button type="submit" class="menu-header">
+                            <div class="header-left">
+                                <i class="fas fa-users"></i>
+                                <span>Users</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </form>
+                    <div class="submenu {% if active_submenu == 'users' %}active{% endif %}">
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_staff') }}">
+                                <i class="fas fa-user-tie"></i> Staffs
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_visitors') }}">
+                                <i class="fas fa-user"></i> Visitors
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-item {% if active_page == 'logbook' %}active{% endif %}">
+                    <a href="{{ url_for('view_logs') }}">
+                        <i class="fas fa-book"></i> Log Book
+                    </a>
+                </div>
+
+                <div class="menu-item {% if active_page == 'settings' %}active{% endif %}">
+                    <a href="{{ url_for('settings') }}">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Log Book</h1>
+                </div>
+            </div>
+
+            <!-- Search & Filter Section -->
+            <div class="search-container">
+                <div class="search-bar-wrapper">
+                    <div class="search-bar">
+                        <form action="{{ url_for('view_logs') }}" method="GET" class="search-form" id="search-form">
+                            <!-- Include any existing filters as hidden inputs -->
+                            {% if request.args.get('date_from') %}
+                            <input type="hidden" name="date_from" value="{{ request.args.get('date_from') }}">
+                            {% endif %}
+                            
+                            {% if request.args.get('date_to') %}
+                            <input type="hidden" name="date_to" value="{{ request.args.get('date_to') }}">
+                            {% endif %}
+                            
+                            {% if request.args.get('time_from') %}
+                            <input type="hidden" name="time_from" value="{{ request.args.get('time_from') }}">
+                            {% endif %}
+                            
+                            {% if request.args.get('time_to') %}
+                            <input type="hidden" name="time_to" value="{{ request.args.get('time_to') }}">
+                            {% endif %}
+                            
+                            <input type="text" name="search" id="search-input" placeholder="Search by name..." 
+                                   value="{{ request.args.get('search', '') }}" autocomplete="off">
+                            <button type="submit" id="search-btn"><i class="fas fa-search"></i></button>
+                        </form>
+                    </div>
+                    <button type="button" id="toggle-filters" class="btn-icon">
+                        <i class="fas fa-sliders-h"></i> Advanced Filters
+                    </button>
+                </div>
+            </div>
+            
+            <div id="filter-panel" class="filter-options">
+                <form action="{{ url_for('view_logs') }}" method="GET" id="filter-form">
+                    <!-- Keep any existing search query -->
+                    {% if request.args.get('search') %}
+                    <input type="hidden" name="search" value="{{ request.args.get('search') }}">
+                    {% endif %}
+                    
+                    <div class="date-range">
+                        <label>Date Range:</label>
+                        <input type="text" name="date_from" class="date-picker" placeholder="From date" 
+                               value="{{ request.args.get('date_from', '') }}">
+                        <span>to</span>
+                        <input type="text" name="date_to" class="date-picker" placeholder="To date"
+                               value="{{ request.args.get('date_to', '') }}">
+                    </div>
+                    
+                    <div class="filter-buttons">
+                        <button type="submit" class="btn-primary">Apply Filters</button>
+                        <button type="button" class="btn-secondary" id="clear-filters">Clear Filters</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Export Options -->
+            <div class="export-options">
+                <button id="export-visible" class="btn-export">
+                    <i class="fas fa-file-export"></i> Export Current View
+                </button>
+                <button id="export-custom" class="btn-export">
+                    <i class="fas fa-file-pdf"></i> Custom Export
+                </button>
+            </div>
+
+            <!-- Logs Table Section -->
+            <div class="logs-table">
+                <div class="logs-header">
+                    <h2>Visitor Logs</h2>
+                    <div class="logs-stats">Showing <span id="showing-count">{{ logs|length }}</span> entries</div>
+                </div>
+                <table id="logs-data">
+                    <thead>
+                        <tr>
+                            <th>Log ID</th>
+                            <th>Visitor</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if logs %}
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.log_id }}</td>
+                                <td>{{ log.visitor_name or 'Unknown' }}</td>
+                                <td>{{ log.check_in.strftime('%Y-%m-%d %H:%M') if log.check_in else '-' }}</td>
+                                <td>{{ log.check_out.strftime('%Y-%m-%d %H:%M') if log.check_out else '-' }}</td>
+                                <td>
+                                    {% if log.check_in and log.check_out %}
+                                        {% set duration = (log.check_out - log.check_in).total_seconds() // 60 %}
+                                        {{ duration }} min
+                                    {% elif log.check_in %}
+                                        Active
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if not log.check_out %}active{% endif %}">
+                                        {{ 'Active' if not log.check_out else 'Checked Out' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="no-data">No logs found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+                <!-- Loading indicator for infinite scroll -->
+                <div id="loading-more" style="display: none;" class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading more entries...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Log Book</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="export-form">
+                    <div class="form-group">
+                        <label for="export-name">Filter by Visitor Name (optional)</label>
+                        <input type="text" id="export-name" placeholder="Enter visitor name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Date Range</label>
+                        <div class="export-date-range">
+                            <input type="text" id="export-date-from" placeholder="Date from" class="date-picker">
+                            <span>to</span>
+                            <input type="text" id="export-date-to" placeholder="Date to" class="date-picker">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Include Fields</label>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" name="fields" value="log_id" checked> Log ID
+                            </label>
+                            <label>
+                                <input type="checkbox" name="fields" value="visitor" checked> Visitor
+                            </label>
+                            <label>
+                                <input type="checkbox" name="fields" value="check_in" checked> Check In
+                            </label>
+                            <label>
+                                <input type="checkbox" name="fields" value="check_out" checked> Check Out
+                            </label>
+                            <label>
+                                <input type="checkbox" name="fields" value="duration" checked> Duration
+                            </label>
+                            <label>
+                                <input type="checkbox" name="fields" value="status" checked> Status
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="generate-pdf" class="btn-primary">Generate PDF</button>
+                        <button type="button" id="cancel-export" class="btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize date pickers
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr(".date-picker", {
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+        }
+        
+        // Toggle advanced filters panel (fixed version)
+        const toggleFiltersBtn = document.getElementById('toggle-filters');
+        const filterPanel = document.getElementById('filter-panel');
+        
+        if (toggleFiltersBtn && filterPanel) {
+            toggleFiltersBtn.addEventListener('click', function() {
+                console.log('Toggle clicked'); // Debug
+                filterPanel.classList.toggle('visible');
+            });
+        }
+        
+        // Check if filter panel should be visible on page load
+        const hasActiveFilters = 
+            Boolean(document.querySelector('input[name="date_from"]').value) || 
+            Boolean(document.querySelector('input[name="date_to"]').value);
+        
+        if (hasActiveFilters) {
+            filterPanel.classList.add('visible');
+        }
+
+        // Rest of your existing code...
+        
+        // Handle clear filters button
+        const clearFiltersBtn = document.getElementById('clear-filters');
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', function() {
+                // Clear all input fields in the filter form
+                document.querySelectorAll('#filter-form input:not([type="hidden"])').forEach(input => {
+                    input.value = '';
+                });
+                
+                // Submit the form with cleared filters
+                document.getElementById('filter-form').submit();
+            });
+        }
+        
+        // Get references to the search input and logs table rows
+        const searchInput = document.getElementById('search-input');
+        const tableRows = document.querySelectorAll('.logs-table tbody tr:not(.no-data)'); // Exclude no-data row
+        const showingCountElement = document.getElementById('showing-count');
+        
+        // Update count on page load to handle empty tables correctly
+        updateEntryCount();
+        
+        // Define the search function
+        function performSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let hasResults = false;
+            
+            // Loop through all rows in the logs table
+            tableRows.forEach(row => {
+                const textContent = row.textContent.toLowerCase();
+                
+                // Show row if it contains the search term, hide it otherwise
+                if (textContent.includes(searchTerm)) {
+                    row.style.display = '';
+                    hasResults = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Check if we need to display a "no results" message
+            let noResultsRow = document.getElementById('no-results-row');
+            
+            if (!hasResults) {
+                // If no results and no message exists yet, create one
+                if (!noResultsRow) {
+                    const tbody = document.querySelector('.logs-table tbody');
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'no-results-row';
+                    noResultsRow.innerHTML = `<td colspan="100%" style="text-align: center; padding: 20px;">No matching results found</td>`;
+                    tbody.appendChild(noResultsRow);
+                } else {
+                    noResultsRow.style.display = '';
+                }
+            } else if (noResultsRow) {
+                // Hide the no results message if we have results
+                noResultsRow.style.display = 'none';
+            }
+
+            // Update the count of visible entries
+            updateEntryCount();
+        }
+        
+        // Function to update entry count correctly
+        function updateEntryCount() {
+            // Check if table has "No logs found" message
+            const noDataRow = document.querySelector('.logs-table tbody .no-data');
+            const noResultsRow = document.getElementById('no-results-row');
+            
+            // Count only actual data rows that are visible
+            const visibleRows = document.querySelectorAll('.logs-table tbody tr:not(.no-data):not(#no-results-row):not([style*="display: none"])');
+            const count = visibleRows.length;
+            
+            // If we have "No logs found" or "No results" showing, set count to 0
+            if ((noDataRow && window.getComputedStyle(noDataRow).display !== 'none') || 
+                (noResultsRow && window.getComputedStyle(noResultsRow).display !== 'none')) {
+                if (showingCountElement) {
+                    showingCountElement.textContent = '0';
+                }
+            } else {
+                if (showingCountElement) {
+                    showingCountElement.textContent = count;
+                }
+            }
+            
+            // Update "entries" vs "entry" text
+            const entriesText = document.querySelector('.logs-stats');
+            if (entriesText) {
+                const countNum = parseInt(showingCountElement.textContent);
+                entriesText.innerHTML = `Showing <span id="showing-count">${countNum}</span> ${countNum === 1 ? 'entry' : 'entries'}`;
+            }
+        }
+        
+        // Add event listener for input changes (live search as user types)
+        if (searchInput) {
+            searchInput.addEventListener('input', performSearch);
+        }
+        
+        // Prevent form submission (which would reload the page)
+        const searchForm = document.querySelector('.search-form');
+        if (searchForm) {
+            searchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                performSearch();
+            });
+        }
+        
+        // Check if we should show the filter panel on page load (if filters are active)
+        if (filterPanel) {
+            const hasActiveFilters = 
+                Boolean(document.querySelector('input[name="date_from"]').value) || 
+                Boolean(document.querySelector('input[name="date_to"]').value);
+            
+            if (hasActiveFilters) {
+                filterPanel.classList.add('visible');
+            }
+        }
+    });
+    </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize date pickers for export modal
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr("#export-date-from", {
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+            
+            flatpickr("#export-date-to", {
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+        }
+
+        // Get references to elements
+        const exportVisibleBtn = document.getElementById('export-visible');
+        const exportCustomBtn = document.getElementById('export-custom');
+        const exportModal = document.getElementById('export-modal');
+        const closeModalBtn = document.querySelector('.close-modal');
+        const cancelExportBtn = document.getElementById('cancel-export');
+        const generatePdfBtn = document.getElementById('generate-pdf');
+        
+        // Common PDF generation configuration
+        const pdfConfig = {
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            putOnlyUsedFonts: true,
+            compress: true
+        };
+        
+        // Colors for PDF to match application theme
+        const theme = document.documentElement.getAttribute('data-theme') || 'light';
+        const pdfColors = theme === 'dark' ? 
+            { header: [44, 62, 80], text: [52, 73, 94] } : 
+            { header: [57, 88, 134], text: [57, 88, 134] };
+        
+        // Function to show modal
+        function showModal() {
+            exportModal.style.display = 'block';
+        }
+        
+        // Function to hide modal
+        function hideModal() {
+            exportModal.style.display = 'none';
+        }
+        
+        // Function to extract visible table data
+        function getVisibleTableData() {
+            const table = document.getElementById('logs-data');
+            const headers = [];
+            const data = [];
+            
+            // Get headers
+            table.querySelectorAll('thead th').forEach(header => {
+                headers.push(header.textContent.trim());
+            });
+            
+            // Get visible rows (those not hidden by search/filter)
+            table.querySelectorAll('tbody tr').forEach(row => {
+                if (row.style.display !== 'none' && !row.id.includes('no-results')) {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach(cell => {
+                        rowData.push(cell.textContent.trim());
+                    });
+                    data.push(rowData);
+                }
+            });
+            
+            return { headers, data };
+        }
+        
+        // Function to generate PDF from table data
+        function generatePDF(tableData, title = 'Visitor Logs') {
+            // Create PDF document
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF(pdfConfig);
+            
+            // Add title and timestamp
+            const now = new Date();
+            const timestamp = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+            
+            doc.setFontSize(18);
+            doc.setTextColor(pdfColors.header[0], pdfColors.header[1], pdfColors.header[2]);
+            doc.text(title, 14, 20);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(pdfColors.text[0], pdfColors.text[1], pdfColors.text[2]);
+            doc.text(`Generated: ${timestamp}`, 14, 28);
+            
+            // Create auto table
+            doc.autoTable({
+                head: [tableData.headers],
+                body: tableData.data,
+                startY: 35,
+                headStyles: {
+                    fillColor: [57, 88, 134],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold'
+                },
+                alternateRowStyles: {
+                    fillColor: [240, 243, 250]
+                },
+                styles: {
+                    fontSize: 9,
+                    cellPadding: 3
+                }
+            });
+            
+            // Save the PDF
+            doc.save(`visitor_logs_${now.toISOString().split('T')[0]}.pdf`);
+        }
+        
+        // Export visible logs button click handler
+        if (exportVisibleBtn) {
+            exportVisibleBtn.addEventListener('click', function() {
+                this.classList.add('loading');
+                this.innerHTML = '<i class="fas fa-spinner"></i> Exporting...';
+                
+                // Small delay to allow UI update to show loading state
+                setTimeout(() => {
+                    try {
+                        const tableData = getVisibleTableData();
+                        generatePDF(tableData, 'Visitor Logs - Current View');
+                    } catch (error) {
+                        console.error('Export error:', error);
+                        alert('An error occurred during export. Please try again.');
+                    } finally {
+                        this.classList.remove('loading');
+                        this.innerHTML = '<i class="fas fa-file-export"></i> Export Current View';
+                    }
+                }, 100);
+            });
+        }
+        
+        // Export custom button click handler
+        if (exportCustomBtn) {
+            exportCustomBtn.addEventListener('click', showModal);
+        }
+        
+        // Close modal handlers
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', hideModal);
+        }
+        
+        if (cancelExportBtn) {
+            cancelExportBtn.addEventListener('click', hideModal);
+        }
+        
+        // Generate PDF button click handler (for custom export)
+        if (generatePdfBtn) {
+            generatePdfBtn.addEventListener('click', function() {
+                this.disabled = true;
+                this.textContent = 'Generating...';
+                
+                // Get form data
+                const visitorName = document.getElementById('export-name').value;
+                const dateFrom = document.getElementById('export-date-from').value;
+                const dateTo = document.getElementById('export-date-to').value;
+                
+                // Get selected fields
+                const selectedFields = [];
+                document.querySelectorAll('input[name="fields"]:checked').forEach(field => {
+                    selectedFields.push(field.value);
+                });
+                
+                // Create query string for the API
+                const params = new URLSearchParams();
+                if (visitorName) params.append('search', visitorName);
+                if (dateFrom) params.append('date_from', dateFrom);
+                if (dateTo) params.append('date_to', dateTo);
+                
+                // Use the current table data with custom filtering for PDF
+                const tableData = getVisibleTableData();
+                
+                // Apply custom filtering based on form inputs
+                const filteredData = tableData.data.filter(row => {
+                    let includeRow = true;
+                    
+                    // Filter by visitor name if provided
+                    if (visitorName && !row[1].toLowerCase().includes(visitorName.toLowerCase())) {
+                        includeRow = false;
+                    }
+                    
+                    // Filter by date range if provided
+                    if (includeRow && dateFrom && dateTo) {
+                        const checkIn = row[2]; // Check-in date from table
+                        if (checkIn !== '-') {
+                            const checkInDate = checkIn.split(' ')[0]; // Extract just the date
+                            includeRow = checkInDate >= dateFrom && checkInDate <= dateTo;
+                        }
+                    }
+                    
+                    return includeRow;
+                });
+                
+                // Create custom title for the PDF
+                let title = 'Visitor Logs - Custom Export';
+                if (visitorName) {
+                    title += ` - ${visitorName}`;
+                }
+                if (dateFrom && dateTo) {
+                    title += ` (${dateFrom} to ${dateTo})`;
+                }
+                
+                // Generate the PDF with filtered data
+                generatePDF({
+                    headers: tableData.headers,
+                    data: filteredData
+                }, title);
+                
+                // Reset button and close modal
+                this.disabled = false;
+                this.textContent = 'Generate PDF';
+                hideModal();
+            });
+        }
+        
+        // Close modal if user clicks outside of it
+        window.addEventListener('click', function(event) {
+            if (event.target === exportModal) {
+                hideModal();
+            }
+        });
+    });
+    </script>
+</body>
+</html>

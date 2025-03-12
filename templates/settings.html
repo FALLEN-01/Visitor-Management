@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <title>Settings - VMS</title>
+    <!-- Settings Page Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/settings-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/settings-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/settings-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/settings-144x144.png') }}">
+</head>
+<body>
+    <div class="background"></div>
+    <nav class="admin-nav">
+        <div class="nav-brand">
+            <i class="fas fa-shield-alt"></i>
+            <span>VMS Admin Panel</span>
+        </div>
+        <div class="nav-status">
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <form action="{{ url_for('toggle_theme') }}" method="POST" id="themeForm">
+                    <label class="switch">
+                        <input type="checkbox" {% if theme == 'dark' %}checked{% endif %} 
+                               onchange="this.form.submit()">
+                        <span class="slider round"></span>
+                    </label>
+                </form>
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="connection-status">
+                <i class="fas fa-wifi {% if status == 'Connected' %}connected{% else %}disconnected{% endif %}"></i>
+            </div>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Users menu item -->
+                <div class="menu-item has-submenu {% if active_submenu == 'users' %}active{% endif %}">
+                    <form action="{{ url_for('toggle_submenu') }}" method="POST" class="submenu-form">
+                        <input type="hidden" name="submenu" value="users">
+                        <button type="submit" class="menu-header">
+                            <div class="header-left">
+                                <i class="fas fa-users"></i>
+                                <span>Users</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </form>
+                    <div class="submenu {% if active_submenu == 'users' %}active{% endif %}">
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_staff') }}">
+                                <i class="fas fa-user-tie"></i> Staffs
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="{{ url_for('manage_visitors') }}">
+                                <i class="fas fa-user"></i> Visitors
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Log Book menu item -->
+                <div class="menu-item {% if active_page == 'logbook' %}active{% endif %}">
+                    <a href="{{ url_for('view_logs') }}">
+                        <i class="fas fa-book"></i> Log Book
+                    </a>
+                </div>
+
+                <!-- Settings menu item (active) -->
+                <div class="menu-item {% if active_page == 'settings' %}active{% endif %}">
+                    <a href="{{ url_for('settings') }}">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Settings</h1>
+                </div>
+            </div>
+
+            <!-- Settings Cards (Only Backup & Export) -->
+            <div class="settings-container">
+                <!-- Backup & Export -->
+                <div class="settings-card">
+                    <div class="settings-header">
+                        <i class="fas fa-database"></i>
+                        <h2>Backup & Export</h2>
+                    </div>
+                    <div class="settings-body">
+                        <div class="backup-actions">
+                            <div class="backup-action">
+                                <div class="backup-info">
+                                    <h3>Database Backup</h3>
+                                    <p>Create a full backup of all system data</p>
+                                </div>
+                                <button class="btn-primary backup-btn">
+                                    <i class="fas fa-download"></i> Backup Now
+                                </button>
+                            </div>
+                            <div class="backup-action">
+                                <div class="backup-info">
+                                    <h3>Export All Visitor Logs</h3>
+                                    <p>Generate full report of all visitor history</p>
+                                </div>
+                                <button class="btn-primary backup-btn">
+                                    <i class="fas fa-file-export"></i> Export
+                                </button>
+                            </div>
+                            <div class="backup-action">
+                                <div class="backup-info">
+                                    <h3>Auto Backup</h3>
+                                    <p>Configure automatic daily backups</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="auto-backup">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="backup-action">
+                                <div class="backup-info">
+                                    <h3>Restore Backup</h3>
+                                    <p>Restore data from a previous backup file</p>
+                                </div>
+                                <div class="file-upload-wrapper">
+                                    <input type="file" id="backup-upload" class="file-upload">
+                                    <span class="file-upload-text">Select backup file</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- About Software Card -->
+                <div class="settings-card">
+                    <div class="settings-header">
+                        <i class="fas fa-info-circle"></i>
+                        <h2>About Software</h2>
+                    </div>
+                    <div class="settings-body">
+                        <div class="about-content">
+                            <div class="about-logo">
+                                <i class="fas fa-shield-alt"></i>
+                                <h3>Visitor Management System</h3>
+                            </div>
+                            <div class="about-info">
+                                <div class="info-item">
+                                    <span class="info-label">Version</span>
+                                    <span class="info-value">2.6.3</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Setup Date</span>
+                                    <span class="info-value">10/03/25</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">License</span>
+                                    <span class="info-value">Standard</span>
+                                </div>
+                            </div>
+                            <div class="about-footer">
+                                <p>© 2025 JEFFIN BASIL. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='settings.js') }}"></script>
+</body>
+</html>

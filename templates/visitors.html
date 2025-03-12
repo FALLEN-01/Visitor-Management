@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <title>Visitor Management - VMS</title>
+    <!-- Visitors Page Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/visitors-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/visitors-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/visitors-180x180.png') }}">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/visitors-144x144.png') }}">
+</head>
+<body>
+    <div class="background"></div>
+    <nav class="admin-nav">
+        <div class="nav-brand">
+            <i class="fas fa-shield-alt"></i>
+            <span>VMS Admin Panel</span>
+        </div>
+        <div class="nav-status">
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <form action="{{ url_for('toggle_theme') }}" method="POST" id="themeForm">
+                    <label class="switch">
+                        <input type="checkbox" {% if theme == 'dark' %}checked{% endif %} 
+                               onchange="this.form.submit()">
+                        <span class="slider round"></span>
+                    </label>
+                </form>
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="connection-status">
+                <i class="fas fa-wifi {% if status == 'Connected' %}connected{% else %}disconnected{% endif %}"></i>
+            </div>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('admin') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Users menu item -->
+                <div class="menu-item has-submenu {% if active_submenu == 'users' %}active{% endif %}">
+                    <form action="{{ url_for('toggle_submenu') }}" method="POST" class="submenu-form">
+                        <input type="hidden" name="submenu" value="users">
+                        <button type="submit" class="menu-header">
+                            <div class="header-left">
+                                <i class="fas fa-users"></i>
+                                <span>Users</span>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </form>
+                    <div class="submenu {% if active_submenu == 'users' %}active{% endif %}">
+                        <div class="menu-item {% if active_page == 'staffs' %}active{% endif %}">
+                            <a href="{{ url_for('manage_staff') }}">
+                                <i class="fas fa-user-tie"></i> Staffs
+                            </a>
+                        </div>
+                        <div class="menu-item {% if active_page == 'visitors' %}active{% endif %}">
+                            <a href="{{ url_for('manage_visitors') }}">
+                                <i class="fas fa-user"></i> Visitors
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-item {% if active_page == 'logbook' %}active{% endif %}">
+                    <a href="{{ url_for('view_logs') }}">
+                        <i class="fas fa-book"></i> Log Book
+                    </a>
+                </div>
+
+                <div class="menu-item {% if active_page == 'settings' %}active{% endif %}">
+                    <a href="{{ url_for('settings') }}">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Visitor Management</h1>
+                </div>
+            </div>
+
+            <!-- Search & Filter Section - UPDATED -->
+            <div class="search-container">
+                <div class="search-bar-wrapper">
+                    <div class="search-bar">
+                        <form action="{{ url_for('manage_visitors') }}" method="GET" class="search-form" id="search-form">
+                            <input type="text" name="search" id="search-input" placeholder="Search visitors..." 
+                                   value="{{ request.args.get('search', '') }}" autocomplete="off">
+                            <button type="submit" id="search-btn"><i class="fas fa-search"></i></button>
+                        </form>
+                    </div>
+                    <button type="button" id="add-visitor" class="btn-primary">
+                        <i class="fas fa-plus"></i> Add Visitor
+                    </button>
+                </div>
+            </div>
+
+            <!-- Visitors Table Section -->
+            <div class="logs-table">
+                <div class="logs-header">
+                    <h2>Visitor List</h2>
+                    <div class="logs-stats">Showing <span id="showing-count">{{ visitors|length }}</span> entries</div>
+                </div>
+                <table id="visitor-data">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>Email</th>
+                            <th>Address</th>
+                            <th>ID Type</th>
+                            <th>ID Number</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if visitors %}
+                            {% for visitor in visitors %}
+                            <tr>
+                                <td>{{ visitor.visitor_id }}</td>
+                                <td>{{ visitor.name }}</td>
+                                <td>{{ visitor.age }}</td>
+                                <td>{{ visitor.sex }}</td>
+                                <td>{{ visitor.email }}</td>
+                                <td>{{ visitor.address }}</td>
+                                <td>{{ visitor.id_proof_type }}</td>
+                                <td>{{ visitor.proof_number }}</td>
+                                <td>{{ visitor.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="actions">
+                                    <button class="btn-icon edit-btn" data-id="{{ visitor.visitor_id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon delete-btn" data-id="{{ visitor.visitor_id }}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="no-results">
+                                <td colspan="10" class="no-data">No visitors found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Visitor Modal -->
+    <div id="visitor-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Visitor</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="visitor-form" action="{{ url_for('manage_visitors') }}" method="POST">
+                    <input type="hidden" id="visitor-id" name="visitor_id">
+                    
+                    <div class="form-group">
+                        <label for="visitor-name">Name</label>
+                        <input type="text" id="visitor-name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-age">Age</label>
+                        <input type="number" id="visitor-age" name="age" min="1" max="120" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-sex">Gender</label>
+                        <select id="visitor-sex" name="sex" required>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-email">Email</label>
+                        <input type="email" id="visitor-email" name="email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-address">Address</label>
+                        <textarea id="visitor-address" name="address" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-id-type">ID Proof Type</label>
+                        <input type="text" id="visitor-id-type" name="id_proof_type" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visitor-proof-number">ID Number</label>
+                        <input type="text" id="visitor-proof-number" name="proof_number" required>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary" id="cancel-visitor">Cancel</button>
+                        <button type="submit" class="btn-primary" id="save-visitor">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this visitor? This may also delete associated log entries.</p>
+                
+                <div class="form-buttons">
+                    <button type="button" class="btn-secondary" id="cancel-delete">Cancel</button>
+                    <button type="button" class="btn-danger" id="confirm-delete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get references to the search input and visitor table rows
+        const searchInput = document.getElementById('search-input');
+        const tableRows = document.querySelectorAll('#visitor-data tbody tr:not(#no-results)');
+        const showingCountElement = document.getElementById('showing-count');
+        
+        // Define the search function
+        function performSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let hasResults = false;
+            let visibleCount = 0;
+            
+            // Loop through all rows in the visitor table
+            tableRows.forEach(row => {
+                const textContent = row.textContent.toLowerCase();
+                
+                // Show row if it contains the search term, hide it otherwise
+                if (textContent.includes(searchTerm)) {
+                    row.style.display = '';
+                    hasResults = true;
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Check if we need to display a "no results" message
+            let noResultsRow = document.getElementById('no-results-row');
+            
+            if (!hasResults) {
+                // If no results and no message exists yet, create one
+                if (!noResultsRow) {
+                    const tbody = document.querySelector('#visitor-data tbody');
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'no-results-row';
+                    noResultsRow.innerHTML = `<td colspan="10" style="text-align: center; padding: 20px;">No matching results found</td>`;
+                    tbody.appendChild(noResultsRow);
+                } else {
+                    noResultsRow.style.display = '';
+                }
+            } else if (noResultsRow) {
+                // Hide the no results message if we have results
+                noResultsRow.style.display = 'none';
+            }
+            
+            // Update the count of visible entries
+            if (showingCountElement) {
+                showingCountElement.textContent = visibleCount;
+            }
+        }
+        
+        // Add event listener for input changes (live search as user types)
+        if (searchInput) {
+            searchInput.addEventListener('input', performSearch);
+        }
+        
+        // Prevent form submission (which would reload the page)
+        const searchForm = document.querySelector('.search-form');
+        if (searchForm) {
+            searchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                performSearch();
+            });
+        }
+        
+        // Visitor Modal Functions 
+        const visitorModal = document.getElementById('visitor-modal');
+        const addVisitorBtn = document.getElementById('add-visitor');
+        const cancelVisitorBtn = document.getElementById('cancel-visitor');
+        const closeModalBtn = document.querySelector('#visitor-modal .close-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const visitorForm = document.getElementById('visitor-form');
+        const visitorIdInput = document.getElementById('visitor-id');
+        const visitorNameInput = document.getElementById('visitor-name');
+        const visitorAgeInput = document.getElementById('visitor-age');
+        const visitorSexInput = document.getElementById('visitor-sex');
+        const visitorEmailInput = document.getElementById('visitor-email');
+        const visitorAddressInput = document.getElementById('visitor-address');
+        const visitorIdTypeInput = document.getElementById('visitor-id-type');
+        const visitorProofNumberInput = document.getElementById('visitor-proof-number');
+        
+        // Add visitor button click
+        if (addVisitorBtn) {
+            addVisitorBtn.addEventListener('click', function() {
+                modalTitle.textContent = 'Add Visitor';
+                visitorIdInput.value = '';
+                visitorForm.reset();
+                visitorModal.style.display = 'block';
+            });
+        }
+        
+        // Cancel and close button clicks
+        if (cancelVisitorBtn) {
+            cancelVisitorBtn.addEventListener('click', function() {
+                visitorModal.style.display = 'none';
+            });
+        }
+        
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', function() {
+                visitorModal.style.display = 'none';
+            });
+        }
+        
+        // Edit buttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const visitorId = this.getAttribute('data-id');
+                const row = this.closest('tr');
+                
+                modalTitle.textContent = 'Edit Visitor';
+                visitorIdInput.value = visitorId;
+                visitorNameInput.value = row.cells[1].textContent;
+                visitorAgeInput.value = row.cells[2].textContent;
+                visitorSexInput.value = row.cells[3].textContent;
+                visitorEmailInput.value = row.cells[4].textContent;
+                visitorAddressInput.value = row.cells[5].textContent;
+                visitorIdTypeInput.value = row.cells[6].textContent;
+                visitorProofNumberInput.value = row.cells[7].textContent;
+                
+                // Change form action
+                visitorForm.action = `/admin/users/visitors/${visitorId}/edit`;
+                
+                visitorModal.style.display = 'block';
+            });
+        });
+        
+        // Delete buttons
+        const confirmModal = document.getElementById('confirm-modal');
+        const cancelDeleteBtn = document.getElementById('cancel-delete');
+        const confirmDeleteBtn = document.getElementById('confirm-delete');
+        let visitorIdToDelete = null;
+        
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                visitorIdToDelete = this.getAttribute('data-id');
+                confirmModal.style.display = 'block';
+            });
+        });
+        
+        if (cancelDeleteBtn) {
+            cancelDeleteBtn.addEventListener('click', function() {
+                confirmModal.style.display = 'none';
+            });
+        }
+        
+        document.querySelector('#confirm-modal .close-modal').addEventListener('click', function() {
+            confirmModal.style.display = 'none';
+        });
+        
+        // Handle delete confirmation
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (visitorIdToDelete) {
+                    // Create and submit form for delete
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/admin/users/visitors/${visitorIdToDelete}/delete`;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+        
+        // Close modal if user clicks outside of it
+        window.addEventListener('click', function(event) {
+            if (event.target === visitorModal) {
+                visitorModal.style.display = 'none';
+            }
+            if (event.target === confirmModal) {
+                confirmModal.style.display = 'none';
+            }
+        });
+    });
+    </script>
+</body>
+</html>
