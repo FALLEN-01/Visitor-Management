@@ -26,6 +26,33 @@ A modern solution for seamless visitor tracking and staff management built with 
   - Automated backup scheduling options
   - Data export in multiple formats
 
+## Screenshots
+
+### HomePage
+![HomePage](screenshots/homepage.png)
+*Homepage*
+
+
+### Admin Dashboard
+![Admin Dashboard](screenshots/admin_dashboard.png)
+*Admin dashboard with real-time visitor statistics and activity monitoring*
+
+### Staff Portal
+![Staff Portal](screenshots/staff_portal.png)
+*Staff interface for visitor registration and management*
+
+### Visitor Check-in
+![Visitor Check-in](screenshots/visitor_checkin.png)
+*Streamlined check-in process with ID verification*
+
+### Digital Log Book
+![Digital Log Book](screenshots/logbook.png)
+*Comprehensive visitor logs with advanced filtering options*
+
+### Settings Panel
+![Settings Panel](screenshots/settings.png)
+*System configuration and backup management*
+
 ## Technology Stack
 
 - Python with Flask backend
