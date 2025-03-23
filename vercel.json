@@ -12,7 +12,8 @@
   ],
   "functions": {
     "api/index.py": {
-      "memory": 1024
+      "memory": 1024,
+      "maxDuration": 10
     }
   },
   "routes": [
@@ -21,12 +22,15 @@
       "dest": "/static/$1"
     },
     {
-      "src": "/export-pdf",
-      "dest": "/api/pdf_export.py"
+      "src": "/favicon/(.*)",
+      "dest": "/static/favicon/$1"
     },
     {
       "src": "/(.*)",
       "dest": "/api/index.py"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONPATH": "."
+  }
 }
