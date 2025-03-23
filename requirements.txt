@@ -1,0 +1,8 @@
+flask
+mysql-connector-python
+pandas
+openpyxl
+werkzeug
+flask-session
+redis
+boto3  # If using AWS S3
