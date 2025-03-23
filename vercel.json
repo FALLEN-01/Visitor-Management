@@ -10,10 +10,19 @@
       "use": "@vercel/static"
     }
   ],
+  "functions": {
+    "api/index.py": {
+      "memory": 1024
+    }
+  },
   "routes": [
     {
       "src": "/static/(.*)",
       "dest": "/static/$1"
+    },
+    {
+      "src": "/export-pdf",
+      "dest": "/api/pdf_export.py"
     },
     {
       "src": "/(.*)",

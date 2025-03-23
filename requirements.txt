@@ -1,8 +1,8 @@
-flask
-mysql-connector-python
-pandas
+flask==2.0.1
+mysql-connector-python==8.0.28
 openpyxl
 werkzeug
-flask-session
+flask-session==0.4.0
 redis
-boto3  # If using AWS S3
+# Remove pandas and use lightweight alternatives
+# Replace boto3 with specific components if possible
