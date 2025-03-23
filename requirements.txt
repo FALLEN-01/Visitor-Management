@@ -1,8 +1,0 @@
-flask==2.0.1
-mysql-connector-python==8.0.28
-openpyxl
-werkzeug
-flask-session==0.4.0
-redis
-# Remove pandas and use lightweight alternatives
-# Replace boto3 with specific components if possible
