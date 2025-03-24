@@ -936,7 +936,7 @@ def search_visitors():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Enhanced query that checks if visitor is already checked in
+        # query that checks if visitor is already checked in
         search_query = """
         SELECT 
             v.*,
@@ -1088,7 +1088,6 @@ def staff_add_visitor():
         
     except Exception as e:
         print(f"Add visitor error: {e}")
-        # Could add flash messages here if you have Flask-Message setup
     
     # Redirect back to staff dashboard
     return redirect(url_for('staff_dashboard'))
@@ -1178,9 +1177,9 @@ def get_staff_password(staff_id):
 
 @app.route('/admin-logout')
 def admin_logout():
-    # Remove only admin-related session data
+    
     session.pop('admin_logged_in', None)
-    # Don't remove theme or other shared settings
+    
     return redirect(url_for('admin_login'))
 
 if __name__ == '__main__':
