@@ -65,7 +65,7 @@ A modern solution for seamless visitor tracking and staff management built with 
 *Staff interface for visitor registration and management*
 
 ### Visitor Check-in
-![Visitor Check-in](screenshots/visitor_checkin.png)
+![Visitor Check-in](screenshots/visitor_check.png)
 *Streamlined check-in process with ID verification*
 
 ## Technology Stack
