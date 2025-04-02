@@ -175,7 +175,7 @@ A modern solution for seamless visitor tracking and staff management built with 
 
 ## Version
 
-Current version: 2.6.3
+Current version: 2.7.1
 
 ## License
 
