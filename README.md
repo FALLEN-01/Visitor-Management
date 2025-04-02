@@ -32,18 +32,21 @@ A modern solution for seamless visitor tracking and staff management built with 
 ![HomePage](screenshots/homepage.png)
 *Homepage*
 
+### Admin Login
+![Admin Login](screenshots/admin_login.png)
+*Admin Login Page*
 
 ### Admin Dashboard
 ![Admin Dashboard](screenshots/admin_dashboard.png)
 *Admin dashboard with real-time visitor statistics and activity monitoring*
 
-### Staff Portal
-![Staff Portal](screenshots/staff_portal.png)
-*Staff interface for visitor registration and management*
+### Staff Management
+![Staff Management](screenshots/staff_manag.png)
+*Staff Management Page*
 
-### Visitor Check-in
-![Visitor Check-in](screenshots/visitor_checkin.png)
-*Streamlined check-in process with ID verification*
+### Visitor Management
+![Visitor Management](screenshots/visi_manag.png)
+*Visitor Management Page*
 
 ### Digital Log Book
 ![Digital Log Book](screenshots/logbook.png)
@@ -52,6 +55,18 @@ A modern solution for seamless visitor tracking and staff management built with 
 ### Settings Panel
 ![Settings Panel](screenshots/settings.png)
 *System configuration and backup management*
+
+### Staff Login
+![Staff Login](screenshots/staff_login.png)
+*Staff Login Page*
+
+### Staff Portal
+![Staff Portal](screenshots/staff_portal.png)
+*Staff interface for visitor registration and management*
+
+### Visitor Check-in
+![Visitor Check-in](screenshots/visitor_checkin.png)
+*Streamlined check-in process with ID verification*
 
 ## Technology Stack
 
