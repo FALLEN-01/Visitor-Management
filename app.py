@@ -3,13 +3,16 @@ import subprocess
 import importlib.util
 
 def check_and_install_dependencies():
-    """Check for required packages and install them if missing"""
+    """
+    Automatically checks for required Python packages and installs missing ones.
+    This ensures all dependencies are available before the application starts.
+    """
     required_packages = {
         'flask': 'Flask',
         'pandas': 'pandas',
-        'openpyxl': 'openpyxl',  # Required for Excel exports
-        'pymysql': 'PyMySQL',    # MySQL connector
-        'werkzeug': 'Werkzeug',  # For security features
+        'openpyxl': 'openpyxl',
+        'pymysql': 'PyMySQL',
+        'werkzeug': 'Werkzeug',
     }
     
     missing_packages = []
@@ -28,7 +31,6 @@ def check_and_install_dependencies():
             subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + missing_packages)
             print("All required packages have been installed successfully!")
             
-            # Restart application to use the newly installed packages
             print("Restarting application...")
             python = sys.executable
             script = sys.argv[0]
@@ -41,7 +43,6 @@ def check_and_install_dependencies():
             input("\nPress Enter to exit...")
             sys.exit(1)
 
-# Call the function before importing Flask and other dependencies
 check_and_install_dependencies()
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
@@ -57,22 +58,28 @@ import io
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Database connection function
 def get_db_connection():
+    """
+    Establishes connection to MySQL database.
+    Returns connection object or None if connection fails.
+    """
     try:
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="1234",  # Change to your MySQL password
-            database="vms"  # Change to your database name
+            password="1234",
+            database="vms"
         )
         return connection
     except Exception as e:
         print(f"Database connection error: {e}")
         return None
 
-# Check database connection status
 def check_db_connection():
+    """
+    Checks if database connection is active and returns status string.
+    Used for displaying connection status in the UI.
+    """
     try:
         connection = get_db_connection()
         if connection and connection.is_connected():
@@ -87,8 +94,11 @@ def check_db_connection():
     except Exception as e:
         return f"Disconnected: {str(e)}"
 
-# Add this after your existing imports
 def admin_required(f):
+    """
+    Decorator to protect admin-only routes.
+    Redirects to admin login if not authenticated.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'admin_logged_in' not in session:
@@ -96,8 +106,11 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Add this right after your admin_required decorator
 def staff_required(f):
+    """
+    Decorator to protect staff-only routes.
+    Redirects to staff login if not authenticated.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'staff_logged_in' not in session:
@@ -105,44 +118,47 @@ def staff_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Routes
 @app.route('/')
 def index():
-    # Always show the homepage directly
+    """Root route that redirects to home page."""
     return redirect(url_for('home'))
 
 @app.route('/admin')
 def admin_redirect():
-    # Public route that redirects to admin login
+    """Public admin route that redirects to admin login."""
     return redirect(url_for('admin_login'))
 
 @app.route('/home')
 def home():
+    """Main homepage route with theme support."""
     theme = session.get('theme', 'light')
     return render_template('home.html', theme=theme)
 
 @app.route('/loading')
 def loading():
-    # This route will display the loading animation
-    # In a real application, you'd process data here
+    """Loading page route for displaying processing animations."""
     return render_template('loading.html')
 
 @app.route('/dashboard')
 def dashboard():
-    # Check DB connection status
+    """Dashboard route that shows database connection status."""
     db_status = check_db_connection()
     return render_template('dashboard.html', status=db_status)
 
 @app.route('/refresh_status')
 def refresh_status():
-    # This will be called by meta refresh, not JavaScript
+    """API endpoint to refresh database connection status."""
     db_status = check_db_connection()
     return render_template('status_indicator.html', status=db_status)
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
+    """
+    Admin login route with authentication.
+    Handles both GET (display form) and POST (process login) requests.
+    """
     if 'admin_logged_in' in session:
-        return redirect(url_for('admin'))  # Changed from admin_dashboard to admin
+        return redirect(url_for('admin'))
         
     if request.method == 'POST':
         username = request.form['username']
@@ -150,16 +166,19 @@ def admin_login():
         
         if username == "admin" and password == "admin123":
             session['admin_logged_in'] = True
-            return redirect(url_for('admin'))  # Changed from admin_dashboard to admin
+            return redirect(url_for('admin'))
         else:
             return render_template('admin_login.html', error="Invalid credentials")
     
     return render_template('admin_login.html', theme=session.get('theme', 'light'))
 
-# Modify your existing admin route to include the decorator
 @app.route('/admin/dashboard')
 @admin_required
 def admin():
+    """
+    Main admin dashboard displaying system statistics and recent logs.
+    Protected by admin_required decorator.
+    """
     theme = session.get('theme', 'light')
     active_submenu = session.get('active_submenu')
     db_status = check_db_connection()
@@ -173,15 +192,12 @@ def admin():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Get staff count
         cursor.execute("SELECT COUNT(*) as staff_count FROM staffs")
         staff_count = cursor.fetchone()['staff_count']
         
-        # Get visitor count
         cursor.execute("SELECT COUNT(*) as visitor_count FROM visitors")
         visitor_count = cursor.fetchone()['visitor_count']
         
-        # Get active sessions
         cursor.execute("""
             SELECT COUNT(*) as active_count 
             FROM logbook 
@@ -189,8 +205,6 @@ def admin():
         """)
         active_count = cursor.fetchone()['active_count']
         
-
-        # Get recent logs with visitor names
         cursor.execute("""
             SELECT 
                 l.log_id,
@@ -229,16 +243,15 @@ def admin():
                          stats=stats,
                          logs=logs)
 
-# Add these new routes after your existing admin route
 @app.route('/admin/add-staff', methods=['GET', 'POST'])
 @admin_required
 def add_staff():
+    """Route for adding new staff members (legacy route)."""
     if request.method == 'POST':
         try:
             connection = get_db_connection()
             cursor = connection.cursor()
             
-            # Get form data
             name = request.form['name']
             email = request.form['email']
             department = request.form['department']
@@ -263,17 +276,16 @@ def add_staff():
 @app.route('/admin/add-visitor', methods=['GET', 'POST'])
 @admin_required
 def add_visitor():
+    """Route for adding new visitors (legacy route)."""
     if request.method == 'POST':
         try:
             connection = get_db_connection()
             cursor = connection.cursor()
             
-            # Get form data
             name = request.form['name']
             purpose = request.form['purpose']
             host = request.form['host']
             
-            # Insert into database
             sql = "INSERT INTO visitors (name, purpose, host) VALUES (%s, %s, %s)"
             values = (name, purpose, host)
             cursor.execute(sql, values)
@@ -294,46 +306,42 @@ def add_visitor():
 @app.route('/admin/users/staff', methods=['GET', 'POST'])
 @admin_required
 def manage_staff():
+    """
+    Staff management route that handles listing, searching, and adding staff members.
+    Supports search functionality and form submission for new staff.
+    """
     theme = session.get('theme', 'light')
     status = check_db_connection()
-    
-    # Keep only the search parameter
     search = request.args.get('search', '')
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Handle POST request for adding new staff
         if request.method == 'POST':
             name = request.form['name']
             email = request.form['email']
             address = request.form['address']
-            password = request.form['password']  # Get password from form
+            password = request.form['password']
             
             cursor.execute("""
                 INSERT INTO staffs (name, email, address, password) 
                 VALUES (%s, %s, %s, %s)
-            """, (name, email, address, password))  # Add password to query
+            """, (name, email, address, password))
             conn.commit()
             
-            # Redirect to prevent form resubmission
             return redirect(url_for('manage_staff'))
         
-        # Build the base query for staff list
         query = "SELECT * FROM staffs WHERE 1=1"
         params = []
         
-        # Add search condition if provided
         if search:
             query += " AND (name LIKE %s OR email LIKE %s OR address LIKE %s)"
             search_term = f"%{search}%"
             params.extend([search_term, search_term, search_term])
         
-        # Complete the query with ordering
         query += " ORDER BY created_at DESC"
         
-        # Execute the query with all parameters
         cursor.execute(query, params)
         staff_list = cursor.fetchall()
         
@@ -359,9 +367,13 @@ def manage_staff():
             conn.close()
 
 @app.route('/admin/users/staff/<int:staff_id>/edit', methods=['POST'])
-@app.route('/admin/users/staff//<int:staff_id>/edit', methods=['POST'])  # Handle double slash case
+@app.route('/admin/users/staff//<int:staff_id>/edit', methods=['POST'])
 @admin_required
 def edit_staff(staff_id):
+    """
+    Edit staff member information.
+    Handles double slash URLs for compatibility.
+    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -369,9 +381,8 @@ def edit_staff(staff_id):
         name = request.form['name']
         email = request.form['email']
         address = request.form['address']
-        password = request.form.get('password')  # Get password if provided
+        password = request.form.get('password')
         
-        # If password is provided, update it; otherwise keep existing password
         if password:
             cursor.execute("""
                 UPDATE staffs 
@@ -400,6 +411,7 @@ def edit_staff(staff_id):
 @app.route('/admin/users/staff/<int:staff_id>/delete', methods=['POST'])
 @admin_required
 def delete_staff(staff_id):
+    """Delete a staff member from the database."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -420,17 +432,18 @@ def delete_staff(staff_id):
 @app.route('/admin/users/visitors', methods=['GET', 'POST'])
 @admin_required
 def manage_visitors():
+    """
+    Visitor management route that handles listing, searching, and adding visitors.
+    Supports search functionality across multiple visitor fields.
+    """
     theme = session.get('theme', 'light')
     status = check_db_connection()
-    
-    # Keep only the search parameter, remove gender and id_type filters
     search = request.args.get('search', '')
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Handle POST request for adding new visitor
         if request.method == 'POST':
             name = request.form['name']
             age = request.form['age']
@@ -446,33 +459,23 @@ def manage_visitors():
             """, (name, int(age), sex, email, address, id_proof_type, proof_number))
             conn.commit()
             
-            # Redirect to prevent form resubmission
             return redirect(url_for('manage_visitors'))
         
-        # Remove ID types filter dropdown logic
-        
-        # Build the base query for visitors list
         query = "SELECT * FROM visitors WHERE 1=1"
         params = []
         
-        # Add search condition if provided
         if search:
             query += " AND (name LIKE %s OR email LIKE %s OR address LIKE %s OR proof_number LIKE %s OR id_proof_type LIKE %s)"
             search_term = f"%{search}%"
             params.extend([search_term, search_term, search_term, search_term, search_term])
         
-        # Remove gender and id_type filter conditions
-        
-        # Complete the query with ordering
         query += " ORDER BY created_at DESC"
         
-        # Execute the query with all parameters
         cursor.execute(query, params)
         visitors_list = cursor.fetchall()
         
         return render_template('visitors.html', 
                             visitors=visitors_list,
-                            # Remove id_types from template context
                             theme=theme,
                             status=status,
                             active_page='visitors',
@@ -482,7 +485,6 @@ def manage_visitors():
         print(f"Error: {e}")
         return render_template('visitors.html',
                             visitors=[],
-                            # Remove id_types from template context
                             theme=theme,
                             status="Disconnected",
                             active_page='visitors',
@@ -496,6 +498,7 @@ def manage_visitors():
 @app.route('/admin/users/visitors/<int:visitor_id>/edit', methods=['POST'])
 @admin_required
 def edit_visitor(visitor_id):
+    """Edit visitor information in the database."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -529,24 +532,21 @@ def edit_visitor(visitor_id):
 @app.route('/admin/users/visitors/<int:visitor_id>/delete', methods=['POST'])
 @admin_required
 def delete_visitor(visitor_id):
+    """
+    Delete a visitor from the database.
+    Also removes any associated logbook entries.
+    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # First check if this visitor has logs in the logbook
         cursor.execute("SELECT COUNT(*) as log_count FROM logbook WHERE visitor_id = %s", (visitor_id,))
         result = cursor.fetchone()
         log_count = result[0] if result else 0
         
         if log_count > 0:
-            # If there are logs, you can either:
-            # 1. Prevent deletion with a message
-            # return "Cannot delete visitor with existing log entries", 400
-            
-            # 2. Or delete related logs first (if that's acceptable in your system)
             cursor.execute("DELETE FROM logbook WHERE visitor_id = %s", (visitor_id,))
         
-        # Then delete the visitor
         cursor.execute("DELETE FROM visitors WHERE visitor_id = %s", (visitor_id,))
         conn.commit()
         
@@ -563,11 +563,14 @@ def delete_visitor(visitor_id):
 @app.route('/admin/logs')
 @admin_required
 def view_logs():
+    """
+    Display visitor logs with search and filtering capabilities.
+    Supports filtering by date range, time range, and visitor name search.
+    """
     theme = session.get('theme', 'light')
     status = check_db_connection()
-    active_submenu = session.get('active_submenu')  # Add this line
+    active_submenu = session.get('active_submenu')
     
-    # Get filter parameters
     search = request.args.get('search', '')
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
@@ -578,7 +581,6 @@ def view_logs():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Build the base query
         query = """
             SELECT 
                 l.log_id,
@@ -591,12 +593,10 @@ def view_logs():
         """
         params = []
         
-        # Add search condition if provided
         if search:
             query += " AND v.name LIKE %s"
             params.append(f"%{search}%")
         
-        # Add date range filters if provided
         if date_from:
             query += " AND DATE(l.check_in) >= %s"
             params.append(date_from)
@@ -605,7 +605,6 @@ def view_logs():
             query += " AND DATE(l.check_in) <= %s"
             params.append(date_to)
         
-        # Add time range filters if provided
         if time_from:
             query += " AND TIME(l.check_in) >= %s"
             params.append(time_from)
@@ -614,14 +613,11 @@ def view_logs():
             query += " AND TIME(l.check_in) <= %s"
             params.append(time_to)
         
-        # Complete the query with ordering
         query += " ORDER BY l.check_in DESC"
         
-        # Execute the query with all parameters
         cursor.execute(query, params)
         logs = cursor.fetchall()
         
-        # Check if filter panel should be visible
         show_filter_panel = bool(date_from or date_to or time_from or time_to)
         
         return render_template('logs.html',
@@ -629,7 +625,7 @@ def view_logs():
                              theme=theme,
                              status=status,
                              active_page='logbook',
-                             active_submenu=active_submenu,  # Add this line
+                             active_submenu=active_submenu,
                              show_filter_panel=show_filter_panel)
                              
     except Exception as e:
@@ -639,7 +635,7 @@ def view_logs():
                              theme=theme,
                              status='Disconnected',
                              active_page='logbook',
-                             active_submenu=active_submenu)  # Add this line
+                             active_submenu=active_submenu)
     finally:
         if 'cursor' in locals():
             cursor.close()
@@ -649,32 +645,33 @@ def view_logs():
 @app.route('/admin/settings')
 @admin_required
 def settings():
+    """Admin settings page for system configuration."""
     status = check_db_connection()
-    active_submenu = session.get('active_submenu')  # Add this line to get the active submenu
+    active_submenu = session.get('active_submenu')
     return render_template('settings.html', 
                           active_page='settings',
                           status=status,
-                          active_submenu=active_submenu,  # Pass it to the template
+                          active_submenu=active_submenu,
                           theme=session.get('theme', 'light'))
 
 @app.route('/toggle-theme', methods=['POST'])
 def toggle_theme():
+    """Toggle between light and dark themes."""
     current_theme = session.get('theme', 'light')
     session['theme'] = 'dark' if current_theme == 'light' else 'light'
     return redirect(request.referrer)
 
 @app.route('/toggle-submenu', methods=['POST'])
 def toggle_submenu():
+    """Toggle sidebar submenu visibility state."""
     current_submenu = request.form.get('submenu')
     active_submenu = session.get('active_submenu')
     
-    # Don't toggle off if coming from another page - just set it
     if request.referrer and ('users' in request.referrer or 
                             'staff' in request.referrer or 
                             'visitors' in request.referrer):
         session['active_submenu'] = current_submenu
     else:
-        # Original toggle behavior
         if active_submenu == current_submenu:
             session.pop('active_submenu', None)
         else:
@@ -682,27 +679,26 @@ def toggle_submenu():
     
     return redirect(request.referrer)
 
-# Register custom template filter for current time
 @app.template_filter('now')
 def filter_now(format_string, format_params='%Y-%m-%d %H:%M:%S'):
+    """Custom template filter for displaying current time."""
     return time.strftime(format_params)
-
-# Add this with your other routes
 
 @app.route('/admin/api/backup-database', methods=['POST'])
 @admin_required
 def backup_database():
+    """
+    Creates a database backup using mysqldump and returns it as a download.
+    Generates timestamped backup files in SQL format.
+    """
     try:
-        # Create backups directory if it doesn't exist
         backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
         if not os.path.exists(backup_dir):
             os.makedirs(backup_dir)
             
-        # Generate backup filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_file = os.path.join(backup_dir, f"vms_backup_{timestamp}.sql")
         
-        # Get database credentials from your connection function
         db_config = {
             "host": "localhost",
             "user": "root",
@@ -710,7 +706,6 @@ def backup_database():
             "database": "vms"
         }
         
-        # Use mysqldump to create backup
         cmd = [
             'mysqldump',
             f'--host={db_config["host"]}',
@@ -723,7 +718,6 @@ def backup_database():
             process = subprocess.Popen(cmd, stdout=f)
             process.wait()
             
-        # Send the file
         return send_file(backup_file, as_attachment=True, download_name=f"vms_backup_{timestamp}.sql")
         
     except Exception as e:
@@ -733,26 +727,25 @@ def backup_database():
 @app.route('/admin/api/export-all-logs', methods=['POST'])
 @admin_required
 def export_all_logs():
+    """
+    Exports all visitor logs to an Excel file.
+    Includes complete visitor information and check-in/out times.
+    """
     try:
-        # Create exports directory if it doesn't exist
         export_dir = os.path.join(os.path.dirname(__file__), 'exports')
         if not os.path.exists(export_dir):
             os.makedirs(export_dir)
             
-        # Generate export filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         export_file = os.path.join(export_dir, f"visitor_logs_{timestamp}.xlsx")
         
-        # Get database connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Get table information to help with debugging
         cursor.execute("SHOW TABLES")
         tables = cursor.fetchall()
         print(f"Available tables: {tables}")
         
-        # Query that matches your actual database schema
         cursor.execute("""
             SELECT 
                 l.log_id AS 'Log ID',
@@ -771,7 +764,6 @@ def export_all_logs():
             ORDER BY l.check_in DESC
         """)
         
-        # Fetch all rows
         results = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -779,14 +771,11 @@ def export_all_logs():
         if not results:
             return jsonify({"error": "No visitor logs found to export"}), 404
             
-        # Create a DataFrame
         import pandas as pd
         df = pd.DataFrame(results)
         
-        # Export to Excel
         df.to_excel(export_file, index=False)
             
-        # Send the file
         return send_file(
             export_file, 
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -801,15 +790,14 @@ def export_all_logs():
 @app.route('/admin/api/set-auto-backup', methods=['POST'])
 @admin_required
 def set_auto_backup():
+    """Configure automatic backup settings in the database."""
     try:
         data = request.json
         enabled = data.get('enabled', False)
         
-        # Store the auto-backup setting in the database
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if settings table exists, if not create it
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 setting_name VARCHAR(255) PRIMARY KEY,
@@ -818,7 +806,6 @@ def set_auto_backup():
             )
         """)
         
-        # Update or insert auto-backup setting
         cursor.execute("""
             INSERT INTO settings (setting_name, setting_value) 
             VALUES ('auto_backup', %s)
@@ -838,6 +825,10 @@ def set_auto_backup():
 @app.route('/admin/api/restore-backup', methods=['POST'])
 @admin_required
 def restore_backup():
+    """
+    Restores database from uploaded backup file.
+    Validates file upload and executes SQL restoration.
+    """
     try:
         if 'backup_file' not in request.files:
             return jsonify({"success": False, "error": "No file uploaded"}), 400
@@ -846,11 +837,9 @@ def restore_backup():
         if backup_file.filename == '':
             return jsonify({"success": False, "error": "No file selected"}), 400
             
-        # Save uploaded file temporarily
         temp_path = os.path.join(os.path.dirname(__file__), 'temp_backup.sql')
         backup_file.save(temp_path)
         
-        # Get database credentials
         db_config = {
             "host": "localhost",
             "user": "root",
@@ -858,7 +847,6 @@ def restore_backup():
             "database": "vms"
         }
         
-        # Use mysql command to restore the backup
         cmd = [
             'mysql',
             f'--host={db_config["host"]}',
@@ -871,7 +859,6 @@ def restore_backup():
             process = subprocess.Popen(cmd, stdin=f)
             process.wait()
             
-        # Clean up temporary file
         os.remove(temp_path)
         
         return jsonify({"success": True})
@@ -880,9 +867,12 @@ def restore_backup():
         print(f"Restore error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Add a staff login route
 @app.route('/staff-login', methods=['GET', 'POST'])
 def staff_login():
+    """
+    Staff login page with email and password authentication.
+    Validates staff credentials against database records.
+    """
     theme = session.get('theme', 'light')
     
     if request.method == 'POST':
@@ -893,20 +883,16 @@ def staff_login():
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
             
-            # Check if staff exists with the provided email
             cursor.execute("SELECT * FROM staffs WHERE email = %s", (email,))
             staff = cursor.fetchone()
             
-            if staff and staff['password'] == password:  # In production, use password hashing!
-                # Set staff session variables
+            if staff and staff['password'] == password:
                 session['staff_logged_in'] = True
                 session['staff_id'] = staff['staff_id']
                 session['staff_name'] = staff['name']
                 
-                # Redirect to staff dashboard (we'll need to create this)
                 return redirect(url_for('staff_dashboard'))
             else:
-                # Authentication failed
                 return render_template('staff_login.html', 
                                        error="Invalid email or password", 
                                        theme=theme)
@@ -927,6 +913,10 @@ def staff_login():
 @app.route('/staff/search-visitors')
 @staff_required
 def search_visitors():
+    """
+    API endpoint for staff to search visitors by name.
+    Returns visitor information including current check-in status.
+    """
     query = request.args.get('q', '')
     
     if len(query) < 2:
@@ -936,7 +926,6 @@ def search_visitors():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # query that checks if visitor is already checked in
         search_query = """
         SELECT 
             v.*,
@@ -965,7 +954,6 @@ def search_visitors():
         cursor.execute(search_query, (f"%{query}%",))
         visitors = cursor.fetchall()
         
-        # Format dates for JSON serialization
         for visitor in visitors:
             if visitor['check_in_time']:
                 visitor['check_in_time'] = visitor['check_in_time'].strftime('%Y-%m-%d %H:%M')
@@ -983,6 +971,10 @@ def search_visitors():
 @app.route('/staff/checkin-visitor', methods=['POST'])
 @staff_required
 def staff_checkin_visitor():
+    """
+    API endpoint for staff to check in a visitor.
+    Creates new logbook entry with current timestamp.
+    """
     if 'staff_logged_in' not in session:
         return jsonify({"error": "Not authenticated"}), 401
     
@@ -993,14 +985,12 @@ def staff_checkin_visitor():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if visitor is already checked in
         cursor.execute("SELECT log_id FROM logbook WHERE visitor_id = %s AND check_out IS NULL", (visitor_id,))
         active_session = cursor.fetchone()
         
         if active_session:
             return jsonify({"success": False, "error": "Visitor is already checked in"}), 409
         
-        # Create new log entry
         cursor.execute("""
             INSERT INTO logbook (visitor_id, check_in)
             VALUES (%s, NOW())
@@ -1021,6 +1011,10 @@ def staff_checkin_visitor():
 @app.route('/staff/checkout-visitor', methods=['POST'])
 @staff_required
 def staff_checkout_visitor():
+    """
+    API endpoint for staff to check out a visitor.
+    Updates existing logbook entry with checkout timestamp.
+    """
     if 'staff_logged_in' not in session:
         return jsonify({"error": "Not authenticated"}), 401
     
@@ -1031,7 +1025,6 @@ def staff_checkout_visitor():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Update the log entry with checkout time
         cursor.execute("UPDATE logbook SET check_out = NOW() WHERE log_id = %s", (log_id,))
         
         if cursor.rowcount == 0:
@@ -1052,6 +1045,10 @@ def staff_checkout_visitor():
 @app.route('/staff/add-visitor', methods=['POST'])
 @staff_required
 def staff_add_visitor():
+    """
+    Add new visitor and automatically check them in.
+    Used by staff when registering new visitors on arrival.
+    """
     if 'staff_logged_in' not in session:
         return redirect(url_for('staff_login'))
     
@@ -1059,7 +1056,6 @@ def staff_add_visitor():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get form data
         name = request.form['name']
         age = request.form['age']
         sex = request.form['sex']
@@ -1068,17 +1064,14 @@ def staff_add_visitor():
         id_proof_type = request.form['id_proof_type']
         proof_number = request.form['proof_number']
         
-        # Insert new visitor
         cursor.execute("""
             INSERT INTO visitors (name, age, sex, email, address, id_proof_type, proof_number)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (name, int(age), sex, email, address, id_proof_type, proof_number))
         
-        # Get the new visitor's ID
         cursor.execute("SELECT LAST_INSERT_ID()")
         visitor_id = cursor.fetchone()[0]
         
-        # Create check-in entry
         cursor.execute("""
             INSERT INTO logbook (visitor_id, check_in)
             VALUES (%s, NOW())
@@ -1089,11 +1082,11 @@ def staff_add_visitor():
     except Exception as e:
         print(f"Add visitor error: {e}")
     
-    # Redirect back to staff dashboard
     return redirect(url_for('staff_dashboard'))
 
 @app.route('/staff-logout')
 def staff_logout():
+    """Staff logout route that clears session data."""
     session.pop('staff_logged_in', None)
     session.pop('staff_id', None)
     session.pop('staff_name', None)
@@ -1102,7 +1095,10 @@ def staff_logout():
 @app.route('/staff-dashboard')
 @staff_required
 def staff_dashboard():
-    # Check if staff is logged in
+    """
+    Main staff dashboard showing active visitor sessions.
+    Displays currently checked-in visitors with duration information.
+    """
     if 'staff_logged_in' not in session:
         return redirect(url_for('staff_login'))
     
@@ -1111,7 +1107,6 @@ def staff_dashboard():
     staff_name = session.get('staff_name')
     status = check_db_connection()
     
-    # Fetch active visitor sessions
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -1154,6 +1149,7 @@ def staff_dashboard():
 @app.route('/admin/users/staff/<int:staff_id>/get-password')
 @admin_required
 def get_staff_password(staff_id):
+    """API endpoint to retrieve staff password for editing purposes."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -1177,10 +1173,13 @@ def get_staff_password(staff_id):
 
 @app.route('/admin-logout')
 def admin_logout():
-    
+    """Admin logout route that clears admin session data."""
     session.pop('admin_logged_in', None)
-    
     return redirect(url_for('admin_login'))
 
 if __name__ == '__main__':
+    """
+    Application entry point.
+    Runs the Flask development server with debug mode enabled.
+    """
     app.run(debug=True)
