@@ -2,6 +2,9 @@ import sys
 import subprocess
 import importlib.util
 
+#All comments are generted by AI 
+# Automatically check and install dependencies
+
 def check_and_install_dependencies():
     """
     Automatically checks for required Python packages and installs missing ones.
